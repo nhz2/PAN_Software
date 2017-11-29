@@ -4,6 +4,8 @@
 #include <LSM6.h>
 #include <EEPROM.h>
 
+#define USBCONNECT //Inlines Ground Testing Functions. Remove Before Flight
+
 //State Machine Definition
 #define DORMANT_CRUISE  1
 #define INITALIZATION   2
@@ -42,7 +44,7 @@ uint8_t HT_Threshold = 60; //C
 //Battery Test
 
 unsigned long LastBattCheck = 0;
-uint16_t BattCheckTime = 8000;
+unsigned long BattCheckTime = 8000;
 unsigned long LastSolarCheck = 0;
 unsigned long lastRadioCheck = 0;
 unsigned long RadioCheckTime = 6000;
@@ -53,7 +55,7 @@ unsigned long lastDLTime = 0;
 //TODO IMU Object
 LSM6 imu;
 LIS3MDL mag;
-int SensorDwell = 10; //100; //Averaging Time Non-BLOCKING!
+unsigned long SensorDwell = 10; //100; //Averaging Time Non-BLOCKING!
 unsigned long lastSensorTime = 0;
 int DataRecords = 0;
 
@@ -61,7 +63,7 @@ int DataRecords = 0;
 unsigned long recentADCSCom = 0;
 unsigned long lastADCSComTime = 0;
 unsigned long lastADCSComAttempt = 0;
-unsigned int ADCSComTime = 2001;
+unsigned long ADCSComTime = 2001;
 unsigned long ADCSResetTimeOut = 30 * 1000;
 
 //ADCS Test
@@ -70,19 +72,27 @@ unsigned long SpinCheckTime = 7010;
 float OmegaThreshold = 30; //Degrees per second
 
 //Thermal Test
-long LastThermalCheck = 0;
-int ThermalCheck = 6100;
+unsigned long LastThermalCheck = 0;
+unsigned long ThermalCheck = 6100;
 
 //Serial Command Test
 int popTime = 4000;
 unsigned long lastPopTime = 0;
 
-//RockBlock Test
+//Radio Test
 bool testRDL = false;
 
 //Commanded Action Flags
 bool commandedSC = false;
 bool commandedDL = false;
+
+//GNC Values;
+unsigned long lastGNCime;
+unsigned long GNCMinTime = 1000 * 60; //Min of 1min between GNC Calculations
+
+//Propulsion Values
+float PresThreshold = 14; //TODO Find real Values and Range
+#define SPIKE_HOLD_DELAY 20 //20us between Thruster Spike and Holds starting
 
 //Pinout Numbers
 #define ADCSReset         2
@@ -139,7 +149,7 @@ void print_binary(int v, int num_places) {
   }
   v = v & mask;  // truncate v to specified number of places
   while (num_places) {
-    if (v & (0x0001 << num_places - 1)) {
+    if (v & (0x0001 << (num_places - 1))) {
       Serial.print("1");
     } else {
       Serial.print("0");
@@ -160,6 +170,133 @@ float fmap(float x, float in_min, float in_max, float out_min, float out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
+
+//class Event {
+//  public:
+//    int id; //0 Void, 1 Thurster Firing, 2 Detumble, 3 Attitude Change etc
+//    long sTime; //Time Event Starts
+//    int * eventData; //Formate TDB
+//    // 1: Thurster Firing, [T1 Time (ms), T2 Time (ms), T3 Time (ms), T4 Time (ms)]
+//    // 2: Detumble, [MaxTime to Attempt]
+//    // 3: Attitude Change, [Q1x1000,Q2x1000,Q3x1000,Q4x1000]
+//    // 4: Downlink [Downlink Type (int)]
+//
+//
+//    Event(int i, long t, int* eData) {
+//      id = i;
+//      sTime = t;
+//      eventData = eData;
+//    }
+//
+//    bool operator <(const Event& d) {
+//      return sTime < d.sTime;
+//    }
+//    bool operator >(const Event& d) {
+//      return sTime > d.sTime;
+//    }
+//    bool operator <=(const Event& d) {
+//      return sTime <= d.sTime;
+//    }
+//    bool operator >=(const Event& d) {
+//      return sTime >= d.sTime;
+//    }
+//    bool operator ==(const Event& d) {
+//      return sTime == d.sTime;
+//    }
+//
+//};
+
+struct Event {
+  int id; //0 Void, 1 Thurster Firing, 2 Detumble, 3 Attitude Change etc
+  long sTime; //Time Event Starts
+  int * eventData; //Formate TDB
+  // 1: Thurster Firing, [T1 Time (ms), T2 Time (ms), T3 Time (ms), T4 Time (ms)]
+  // 2: Detumble, [MaxTime to Attempt]
+  // 3: Attitude Change, [Q1x1000,Q2x1000,Q3x1000,Q4x1000]
+  // 4: Downlink [Downlink Type (int)]
+};
+
+class Scheduler {
+  private:
+    Event * Events[20] = {0}; //20 Events max in pipeline
+    int Stored;
+
+    bool insert(Event * e, int index) {
+      if (Stored < 20) {
+        Event * temp[20 - index] = {0};
+        for (int i = 0; i < 20 - index; i++) {
+          temp[i] = Events[index + i];
+        }
+        Events[index] = e;
+        for (int i = 0; i < 20 - index; i++) {
+          Events[index + i + 1] = temp[i];
+        }
+        Stored++;
+        return true;
+
+      } else {
+        return false;
+      }
+    }
+
+  public:
+    Scheduler() {
+      Stored = 0;
+    }
+
+    int getNumStored() {
+      return Stored;
+    }
+
+    bool addEvent(Event * e) {
+      if (Stored >= 20) {
+        return false;
+      } else {
+        int ind = 0;
+        for (int i = 0; i < Stored; i++) {
+          if (e->sTime < Events[i]->sTime) {
+            ind = i;
+            break;
+          }
+        }
+        return insert(e, ind);
+      }
+    }
+
+    long getNextEventTime() {
+      if (Stored > 0) {
+        return Events[0]->sTime;
+      } else {
+        return 0;
+      }
+    }
+
+    void * getNextEvent() {
+      return Events[0];
+    }
+
+    void popEvent() {
+      //Assumes Event has occured
+      free(Events[0]->eventData);
+      free(Events[0]);
+      for (int i = 0; i < (Stored - 1); i++) {
+        Events[i] = Events[i + 1];
+      }
+      Events[Stored] = (Event *)0;
+      Stored--;
+    }
+
+    void clearEvents() {
+      for (int i = 0; i < Stored; i++) {
+        free(Events[i]->eventData);
+        free(Events[i]);
+        Events[i] = (Event *)0;
+      }
+      Stored = 0;
+    }
+
+};
+
 
 class GPSData {
   public:
@@ -209,13 +346,15 @@ class GPSData {
 
     bool updateData() {
       //TODO Fetch Data from Piksi
+      return false;
     }
 };
+
 
 class masterStatus {
     //Class to hold entire State of Spacecraft Operation except timers
   public:
-
+    Scheduler Sch;
 
     bool hardwareAvTable[11];//Hardware Avaliability Table
     //[Imu, SX+,SX-,SY+, SY-, SZ+, SZ-,Temp,DoorSense,LightSense,ADCS]
@@ -226,19 +365,19 @@ class masterStatus {
     int NextState;
 
     //IMU Data Variables
-    float Mag[3]; // max 0.65 gauss min -0.65 gauss
-    float Gyro[3];  // max 245 dps min -245 dps
-    float Accel[3]; //?
-    float MagAcc[3]; //Accumulator
-    float GyroAcc[3]; //Accumulator
-    float AccelAcc[3]; //Accumulator
-    float GyroZero[3]; //Gyro Origin
-    float Temp[4];
-    float TempAcc[4]; // TODO Range
+    float Mag[3] = {0}; // max 0.65 gauss min -0.65 gauss
+    float Gyro[3] = {0};  // max 245 dps min -245 dps
+    float Accel[3] = {0}; //?
+    float MagAcc[3] = {0}; //Accumulator
+    float GyroAcc[3] = {0}; //Accumulator
+    float AccelAcc[3] = {0}; //Accumulator
+    float GyroZero[3] = {0}; //Gyro Origin
+    float Temp[4] = {0};
+    float TempAcc[4] = {0}; // TODO Range
 
     //Sensor Variables
     float Battery; // TODO Range
-    float PhotoTrans[15];
+    float PhotoTrans[15] = {0};
 
     //ADCS State Variables
     float RWA1_RotorSpeed;//  Rotor speed of CMG 1
@@ -280,6 +419,7 @@ class masterStatus {
     int Thrust3Fire; //T3 firing counter
     int Thrust4Fire; //T4 firing counter
 
+    float PressCurrent;
     float PresBeforeFire; //Tank Psi Before fire
     float PresAfterFire; //Tank Psi After fire
     float PresDownlink; //Tank Psi Before DL
@@ -351,21 +491,16 @@ class masterStatus {
       State = 4; //Normal Ops //TODO
       NextState = State;
 
+      Sch = Scheduler();
+
       //bool hardwareAvTable[10] = {true}; // Hardware Avaliability Table
       //TODO
 
       //IMU
-      Gyro[3] = {0};
-      Mag[3] = {0};
-      GyroAcc[3] = {0};
-      MagAcc[3] = {0};
-      GyroZero[3] = {0};
-      Temp[4] = {0};
-      TempAcc[4] = {0};
+
 
       //Sensors
-      Battery = 3.8; //
-      PhotoTrans[15] = {0};
+      Battery = 3.8;
 
       //ADCS
       TorqX_PWM = 0;
@@ -431,6 +566,7 @@ void SensorDataCollect(int type = 0) { //TODO <-what is the todo for?
   //Collect Sensor Data and Average it if sufficient time has passed
   getIMUData();
   DataRecords++;
+  //TODO Measure Tank2 Pressure
   if (millis() - lastSensorTime > SensorDwell) { //SensorDwell ~10ms
     //Add Any Averaging Data
 
@@ -445,9 +581,9 @@ void SensorDataCollect(int type = 0) { //TODO <-what is the todo for?
       MSH.Temp[i] = MSH.TempAcc[i] / ((float)DataRecords);
     }
 
-    MSH.TempAcc[4] = {0};
-    MSH.GyroAcc[0] = 0; MSH.GyroAcc[1] = 0; MSH.GyroAcc[2] = 0;
-    MSH.MagAcc[0] = 0; MSH.MagAcc[1] = 0; MSH.MagAcc[2] = 0;
+    memset(MSH.TempAcc, 0, sizeof(int) * 4);
+    memset(MSH.GyroAcc, 0, sizeof(int) * 3);
+    memset(MSH.MagAcc, 0, sizeof(int) * 3);
     lastSensorTime = millis();
     DataRecords = 0;
   }
@@ -464,14 +600,14 @@ class commandBuffer {
     int commandStack[200][2];
     int openSpot;
     commandBuffer() {
-      commandStack[200][2] = { -1};
+      memset(commandStack, -1, sizeof(commandStack[0][0]) * 200 * 2);
       openSpot = 0;
     }
     void print() {
       //Serial formatting and Serial output
       int i = 0;
       Serial.print(F("cBuf = ["));
-      int endT = millis() + manualTimeout;
+      unsigned long endT = millis() + manualTimeout;
       while (i < 200 && millis() < endT) {
         if (commandStack[i][0] == -1 && commandStack[i][1] == -1) {
           break;
@@ -556,7 +692,7 @@ void buildBuffer(String com) {
     commandData = (com.substring(com.indexOf(",") + 1, com.indexOf("!"))).toInt();
     cBuf.commandStack[cBuf.openSpot][0] = commandType;
     cBuf.commandStack[cBuf.openSpot][1] = commandData;
-    if (com.indexOf("!") == com.length() - 1) {
+    if (com.indexOf("!") == (int)(com.length() - 1)) {
       l = false;
       //Serial.println(F("Finished Adding Commands"));
     } else {
@@ -570,9 +706,9 @@ boolean isInputValid(String input) {
   //Check if incoming command string <input> is valid
   int lastPunc = 0; //1 if ",", 2 if "!", 0 Otherwise
   bool valid = true;
-  int q = 0;
-  int l = input.length();
-  int endT = manualTimeout + millis();
+  unsigned int q = 0;
+  unsigned int l = input.length();
+  unsigned long endT = manualTimeout + millis();
   while (q < l) {
     char currentChar = input[q];
     q++;
@@ -642,7 +778,7 @@ boolean isInputValid(String input) {
       }
     }
     //Null Character in the middle
-    if (currentChar == '\0' && q != input.length() - 1) {
+    if ((currentChar == '\0') && (q != (input.length() - 1))) {
       valid = false;
       break;
     }
@@ -776,23 +912,120 @@ void readSerialAdd2Buffer() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////Propulsion Functions////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//ADCS Functions
+void fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsigned long t3, unsigned long t4) {
+  //Fires Thrusters at millis()>=sTime for Durations t1-t4 for each thruster
+  //TODO Pressure Check?
+  unsigned long delayendT = millis() + 5000; //Wait up till 5 sec to start thruster firing, if >5s pass -> error -> abort firing
+  unsigned long LastOff = (unsigned long)max(max(t1, t2), max(t3, t4));
+  bool On[4] = {true};
+
+  MSH.PresBeforeFire = MSH.PressCurrent;
+
+  unsigned long endLastOff = LastOff + sTime + 1; //Make Sure all End Times are within loop so valves close
+  unsigned long endt1 = t1 + sTime;
+  unsigned long endt2 = t2 + sTime;
+  unsigned long endt3 = t3 + sTime;
+  unsigned long endt4 = t4 + sTime;
+  while (millis() <= sTime) {
+    if (millis() > delayendT) {
+      //TODO Timing Error
+      return;
+    }
+  }
+
+  digitalWrite(Valve1, HIGH);
+  delayMicroseconds(SPIKE_HOLD_DELAY);
+  digitalWrite(Valve2, HIGH);
+  delayMicroseconds(SPIKE_HOLD_DELAY);
+  digitalWrite(Valve3, HIGH);
+  delayMicroseconds(SPIKE_HOLD_DELAY);
+  digitalWrite(Valve4, HIGH);
+  delayMicroseconds(SPIKE_HOLD_DELAY);
+
+  while (millis() >= endLastOff) {
+    if (On[0] && millis() > endt1) {
+      digitalWrite(Valve1, LOW);
+      On[0] = false;
+    }
+    if (On[1] && millis() > endt2) {
+      digitalWrite(Valve2, LOW);
+      On[1] = false;
+    }
+    if (On[2] && millis() > endt3) {
+      digitalWrite(Valve3, LOW);
+      On[2] = false;
+    }
+    if (On[3] && millis() > endt4) {
+      digitalWrite(Valve4, LOW);
+      On[3] = false;
+    }
+  }
+
+  //Ensure all Values Are Closed on Edge Cases (Probably Redundant)
+  digitalWrite(Valve1, LOW);
+  digitalWrite(Valve2, LOW); 
+  digitalWrite(Valve3, LOW);
+  digitalWrite(Valve4, LOW);
+
+  //Update Counters and MSH info
+  //TODO ThrustFiring; //0-14 Last thrust firing combination
+  MSH.ThrustStart = sTime; //Millis Time for thruster to fire
+  MSH.ThurstDuration = LastOff; //Duration of firing in millis
+  if (t1 > 0) {
+    MSH.Thrust1Fire++;
+  }
+  if (t2 > 0) {
+    MSH.Thrust2Fire++;
+  }
+  if (t3 > 0) {
+    MSH.Thrust3Fire++;
+  }
+  if (t4 > 0) {
+    MSH.Thrust4Fire++;
+  }
+
+  SensorDataCollect();
+  MSH.PresAfterFire = MSH.PressCurrent;
+
+  return;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////ADCS Functions/////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 /* Supported Commands ADCS Can Recieved
   //TODO
 */
 
-void IMUInit() {
+bool IMUInit() {
   //Initialize Default Scale of IMU/Mag
-  //TODO init failure
-  mag.init();
-  imu.init();
+  //TODO init failure flag somewhere
+  unsigned long endT = millis() + manualTimeout;
+  bool successMag = false;
+  bool successImu = false;
+  while (millis() < endT) {
+    if (mag.init()) {
+      successImu = true;
+      mag.enableDefault();
+      break;
+    }
+  }
 
-  imu.enableDefault();
-  mag.enableDefault();
+  endT = millis() + manualTimeout;
+  while (millis() < endT) {
+    if (imu.init()) {
+      successImu = true;
+      imu.enableDefault();
+      break;
+    }
+  }
+
+  return (successMag && successImu);
 }
 
 void sendADCSCommand(String data) {
@@ -823,7 +1056,7 @@ bool requestFromADCS() {
   if (WireConnected) {
     Wire.requestFrom(11, 40, true); // request 10 bytes from ADCS device #TODO
     //delay(50);
-    int endTime = millis() + manualTimeout;
+    unsigned long endTime = millis() + manualTimeout;
     //Serial.println("Here");
 
     //Read and Reformat
@@ -832,7 +1065,7 @@ bool requestFromADCS() {
       success = true;
     }
     String res = "";
-    while (Wire.available()) {
+    while (Wire.available() or millis() > endTime) {
       res += (char)Wire.read();
     }
     res = res.substring(0, res.indexOf('|'));
@@ -923,14 +1156,14 @@ void sendIMUToADCS() {
 //} hkparam_t;
 
 //p31u-8 and p31u-9
-public typedef struct eps_hk_vi_t __attribute__((packed)) { //20 bytes
-  uint16_t vboost[3]; //! Voltage of boost converters [mV] [PV1, PV2, PV3]
-  uint16_t vbatt; //! Voltage of battery [mV]
-  uint16_t curin[3]; //! Current in [mA]
-  uint16_t cursun; //! Current from boost converters [mA]
-  uint16_t cursys; //! Current out of battery [mA]
-  uint16_t reserved1; //! Reserved for future use
-};
+//typedef struct eps_hk_vi_t __attribute__((packed)) { //20 bytes
+//  uint16_t vboost[3]; //! Voltage of boost converters [mV] [PV1, PV2, PV3]
+//  uint16_t vbatt; //! Voltage of battery [mV]
+//  uint16_t curin[3]; //! Current in [mA]
+//  uint16_t cursun; //! Current from boost converters [mA]
+//  uint16_t cursys; //! Current out of battery [mA]
+//  uint16_t reserved1; //! Reserved for future use
+//};
 
 //typedef struct __attribute__((packed)) {
 //  uint16_t curout[6]; //! Current out (switchable outputs) [mA]
@@ -958,76 +1191,112 @@ public typedef struct eps_hk_vi_t __attribute__((packed)) { //20 bytes
 //  uint8_t pptmode; //! Mode of PPT tracker [1=MPPT, 2=FIXED]
 //  uint16_t reserved2;
 //} eps_hk_basic_t;
+//
+//void ByteArrayToStructure(byte* b)
+//{
+//  eps_hk_vi_t tmp; //Re-make the struct
+//  memcpy(&tmp, b, sizeof(tmp));
+//  //ONLY WORKS WITH THE SAME ENDIANESS
+//  //Serial.println(tmp.
+//}
+//
+//void fetchHouseKeeping() {
+//  //Fetch eps_hk_vi_t
+//  Wire.beginTransmission(0x0C);
+//  Wire.write(8);
+//  Wire.write(1);
+//  delayMicroseconds(5);
+//
+//  byte temp[100] = {0};
+//  byte hk_vi_t[20] = {0};
+//
+//  //Read Retu
+//  int i = 0;
+//  while (Wire.available()) {
+//    temp[i] = Wire.read();
+//    i++;
+//  }
+//  i = 0;
+//
+//
+//
+//
+//
+//}
+//
+//
+//void rebootGS() {
+//  //Sends Magic Sequence to Board to reboot the GS
+//  int outgoingByte[] = {0x80};
+//  int outgoingByte1[] = {0x07};
+//  int outgoingByte2[] = {0x80};
+//  int outgoingByte3[] = {0x07};
+//  Wire.write(outgoingByte[0]);
+//  Wire.write(outgoingByte1[0]);
+//  Wire.write(outgoingByte2[0]);
+//  Wire.write(outgoingByte3[0]);
+//
+//  rtrn = Wire.endTransmission(false);
+//}
+//
+//
+//void setGomSpaceSlaveMode() {
+//
+//}
+//
+//bool pingGS() {
+//  //Pings the GomSpace Board to verify that its functioning, ping returns whatever value is sent to it.
+//  Wire.beginTransmission(0x0C);
+//  Wire.write(1);
+//  Wire.write(7);
+//  delayMicroseconds(5);
+//
+//  uint8_t r;
+//  while (Wire.available()) {
+//    r = Wire.read();
+//  }
+//  if (r == 7) {
+//    return true;
+//  } else {
+//    return false;
+//  }
+//}
 
-void ByteArrayToStructure(byte[] b)
-{
-  eps_hk_vi_t tmp; //Re-make the struct
-  memcpy(&tmp, b, sizeof(tmp));
-  //ONLY WORKS WITH THE SAME ENDIANESS
-  //Serial.println(tmp.
-}
-
-void fetchHouseKeeping() {
-  //Fetch eps_hk_vi_t
-  Wire.beginTransmission(0x0C);
-  Wire.write(8);
-  Wire.write(1);
-  delayMicroseconds(5);
-
-  byte temp[100] = {0};
-  byte hk_vi_t[20] = {0};
-
-  //Read Retu
-  int i = 0
-  while (Wire.available()) {
-    temp[i] = Wire.read();
-    i++;
-  }
-  i = 0;
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////GNC Calculation///////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+void * GNC_calcNextFiring() {
+  if (MSH.Sch.getNumStored() < 20) {
+    int * eData = (int*)malloc(sizeof(int) * 4);
+    Event *e = (Event *)malloc(sizeof(Event));
 
+    //TODO Autocoded GNC Algorithm
+    // Inputs: Orbit Model, Approx Location
+    // Output: Impulse Vector and Location to Fire
 
+    //TODO Convert Impulse Vector to Thruster Times
+    //TODO Convert GNC Output Location to Time from Now
 
-}
-
-
-void rebootGS() {
-  //Sends Magic Sequence to Board to reboot the GS
-  int outgoingByte[] = {0x80};
-  int outgoingByte1[] = {0x07};
-  int outgoingByte2[] = {0x80};
-  int outgoingByte3[] = {0x07};
-  Wire.write(outgoingByte[0]);
-  Wire.write(outgoingByte1[0]);
-  Wire.write(outgoingByte2[0]);
-  Wire.write(outgoingByte3[0]);
-
-  rtrn = Wire.endTransmission(false);
-}
-
-
-void setGomSpaceSlaveMode() {
-
-}
-
-bool pingGS() {
-  //Pings the GomSpace Board to verify that its functioning, ping returns whatever value is sent to it.
-  Wire.beginTransmission(0x0C);
-  Wire.write(1);
-  Wire.write(7);
-  delayMicroseconds(5);
-
-  uint8_t r;
-  while (Wire.available()) {
-    r = Wire.read();
-  }
-  if (r == 7) {
-    return true;
+    //BoilerPlate for Testing
+    eData[0] = 10; eData[1] = 10;  eData[2] = 10;  eData[3] = 10;
+    e->eventData = eData;
+    e->sTime = millis() + random(5000, 15000); //Random Start time 5-15s in future for testing
+    e->id = 1;
+    return e;
   } else {
-    return false;
+    //TODO Problem in scheduler, or 20+ events are already planned
+    Event *e = (Event *)malloc(sizeof(Event));
+    int * eData = (int*)malloc(sizeof(int) * 1);
+    eData[0] = 1;
+    e->eventData = eData;
+    e->sTime = 2147483647; //Abitrary Large Value
+    e->id = 1;
+    return e;
   }
 }
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1049,33 +1318,66 @@ void Stall() {
 void setup() {
 
   //Start Connections and Create MSH
+#ifdef USBCONNECT
   Serial.begin(9600);
+#endif
   Wire.begin(); //Start i2c as master
-  MSH = masterStatus();
-  cBuf = commandBuffer();
+  MSH = masterStatus(); //Create Master Status Object
+  cBuf = commandBuffer(); //Create Command Buffer
 
-  //Set Pinmode Registers
+  //Set Pinout Registers
   initalizePinOut();
 
   //Start IMU/Mag/Gyro
   Serial.println(F("\nStarting IMU"));
-  IMUInit();
+  bool imuI = IMUInit(); //TODO Check? Loop?
+  if (!imuI) {
+    //TODO Raise IMU Fail Flag
+  }
 
   //Start Piksi GPS
 
   //Start Quake Radio
 
 
-  int endT = millis() + manualTimeout;
+  //int endT = millis() + manualTimeout;
   MSH.State = NORMAL_OPS;
   MSH.NextState = NORMAL_OPS;
 }
 
 void loop() {
-  readSerialAdd2Buffer(); //Testing Command Input
+#ifdef USBCONNECT
+  readSerialAdd2Buffer(); //Testing Command Input //TODO #ifdef
+#endif
 
   //Mode Controller
   //  Determined MSH.
+
+  //Process Next Scheduled Event if it Starts in less than 1s //TODO make Variable Prep Time
+  if (millis() - MSH.Sch.getNextEventTime() < 1000) { //
+    Event *e = (Event *)MSH.Sch.getNextEvent();
+
+    switch (e->id) {
+      case (0): //Void
+        break;
+
+      case (1): //Thruster Firing
+        fireThrusters(e->sTime, e->eventData[0], e->eventData[1], e->eventData[2], e->eventData[3]);
+        break;
+
+      case (2): //Detumble
+        break;
+
+      case (3): //Attitude Change
+        break;
+
+      case (4): //Downlink
+        break;
+    }
+
+    MSH.Sch.popEvent();
+
+  }
 
   switch (MSH.State) {
     case (NORMAL_OPS): {
@@ -1084,6 +1386,14 @@ void loop() {
         SensorDataCollect();
 
         //GNC Calculation
+        //TODO Verify
+        if (millis() - lastGNCime >= 10000) { //GNCMinTime) { //10s for testing
+          if (MSH.PressCurrent > PresThreshold) {
+            Event * e = (Event *)GNC_calcNextFiring();
+            MSH.Sch.addEvent(e);
+            lastGNCime = millis();
+          }
+        }
 
         //Thruster Firing
 
@@ -1105,7 +1415,7 @@ void loop() {
 
         //Test ADCS Communication
         if (true) { //MSH.hardwareAvTable[10]) {
-          unsigned long t = millis();
+          //unsigned long t = millis();
           if (millis() - lastADCSComAttempt >= ADCSComTime) {
             lastADCSComAttempt = millis();
             Serial.print("<IMU>");
@@ -1117,20 +1427,19 @@ void loop() {
               Serial.print(F("No Reply From ADCS for "));
               Serial.print((millis() - lastADCSComTime) / 1000.0);
               Serial.println(F(" seconds"));
-              //            }
             }
           }
         }
 
         //ADCS Testing Display
         if (millis() - LastSpinCheckT > SpinCheckTime) {
-          Serial.print(F("<G:") + String(MSH.Gyro[0], 2) + "|" +
+          Serial.print(("<G:") + String(MSH.Gyro[0], 2) + "|" +
                        String(MSH.Gyro[1], 2) + "|" +
                        String(MSH.Gyro[2], 2) + ">");
-          Serial.print(F("<MG:") + String(MSH.Mag[0], 2) + "|" +
+          Serial.print(("<MG:") + String(MSH.Mag[0], 2) + "|" +
                        String(MSH.Mag[1], 2) + "|" +
                        String(MSH.Mag[2], 2) + ">");
-          Serial.print(F("<AC:") + String(MSH.Accel[0], 2) + "|" +
+          Serial.print(("<AC:") + String(MSH.Accel[0], 2) + "|" +
                        String(MSH.Accel[1], 2) + "|" +
                        String(MSH.Accel[2], 2) + ">");
           LastSpinCheckT = millis();

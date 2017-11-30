@@ -92,6 +92,7 @@ unsigned long GNCMinTime = 1000 * 60; //Min of 1min between GNC Calculations
 
 //Propulsion Values
 float PresThreshold = 14; //TODO Find real Values and Range
+unsigned long FillTimeoutTime = 10000; //Time to abort Tank Filling After, Currently 10s
 #define SPIKE_HOLD_DELAY 20 //20us between Thruster Spike and Holds starting
 
 //Pinout Numbers
@@ -136,13 +137,16 @@ class floatTuple
       z = c;
     }
     void print() {
+#ifdef USBCONNECT
       Serial.print(x); Serial.print(F(" "));
       Serial.print(y); Serial.print(F(" "));
       Serial.print(z); Serial.println(F(" "));
+#endif
     }
 };
 
 void print_binary(int v, int num_places) {
+#ifdef USBCONNECT
   int mask = 0, n;
   for (n = 1; n <= num_places; n++) {
     mask = (mask << 1) | 0x0001;
@@ -156,55 +160,23 @@ void print_binary(int v, int num_places) {
     }
     --num_places;
   }
+#endif
 }
 
 void printArray(uint8_t arr[], int s) {
+#ifdef USBCONNECT
   for (int i = 0; i < s; i++) {
     print_binary(arr[i], 8);
     Serial.print(" ");
   }
   Serial.println("");
+#endif
 }
 
 float fmap(float x, float in_min, float in_max, float out_min, float out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
-
-//class Event {
-//  public:
-//    int id; //0 Void, 1 Thurster Firing, 2 Detumble, 3 Attitude Change etc
-//    long sTime; //Time Event Starts
-//    int * eventData; //Formate TDB
-//    // 1: Thurster Firing, [T1 Time (ms), T2 Time (ms), T3 Time (ms), T4 Time (ms)]
-//    // 2: Detumble, [MaxTime to Attempt]
-//    // 3: Attitude Change, [Q1x1000,Q2x1000,Q3x1000,Q4x1000]
-//    // 4: Downlink [Downlink Type (int)]
-//
-//
-//    Event(int i, long t, int* eData) {
-//      id = i;
-//      sTime = t;
-//      eventData = eData;
-//    }
-//
-//    bool operator <(const Event& d) {
-//      return sTime < d.sTime;
-//    }
-//    bool operator >(const Event& d) {
-//      return sTime > d.sTime;
-//    }
-//    bool operator <=(const Event& d) {
-//      return sTime <= d.sTime;
-//    }
-//    bool operator >=(const Event& d) {
-//      return sTime >= d.sTime;
-//    }
-//    bool operator ==(const Event& d) {
-//      return sTime == d.sTime;
-//    }
-//
-//};
 
 struct Event {
   int id; //0 Void, 1 Thurster Firing, 2 Detumble, 3 Attitude Change etc
@@ -262,6 +234,7 @@ class Scheduler {
         return insert(e, ind);
       }
     }
+
 
     long getNextEventTime() {
       if (Stored > 0) {
@@ -562,8 +535,9 @@ void getTempSensors() {
   digitalWrite(TempMux2, LOW);
 }
 
-void SensorDataCollect(int type = 0) { //TODO <-what is the todo for?
+void SensorDataCollect(int type = 0) {
   //Collect Sensor Data and Average it if sufficient time has passed
+  //TODO Force multiple runs after long functions has run
   getIMUData();
   DataRecords++;
   //TODO Measure Tank2 Pressure
@@ -604,6 +578,7 @@ class commandBuffer {
       openSpot = 0;
     }
     void print() {
+#ifdef USBCONNECT
       //Serial formatting and Serial output
       int i = 0;
       Serial.print(F("cBuf = ["));
@@ -619,6 +594,7 @@ class commandBuffer {
         i++;
       }
       Serial.println(F("]"));
+#endif
     }
 };
 commandBuffer cBuf;
@@ -802,7 +778,9 @@ void popCommands() {
         case (93): //Set Manual Function Timeout (millis)
           if (currentCommand[1] >= 2000) {
             manualTimeout = (currentCommand[1]);
+#ifdef USBCONNECT
             Serial.println(("\nManual Function Timeout set to ") + String(currentCommand[1]) + (" ms"));
+#endif
           }
           break;
 
@@ -906,7 +884,9 @@ void readSerialAdd2Buffer() {
       popCommands();
 
     } else {
+#ifdef USBCONNECT
       Serial.println("\nInvalid Testing Command");
+#endif
     }
   }
 }
@@ -915,8 +895,9 @@ void readSerialAdd2Buffer() {
 ////Propulsion Functions////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsigned long t3, unsigned long t4) {
+bool fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsigned long t3, unsigned long t4) {
   //Fires Thrusters at millis()>=sTime for Durations t1-t4 for each thruster
+  //THIS FUNCTION HAS CODE EVAL DURATION > 1s!
   //TODO Pressure Check?
   unsigned long delayendT = millis() + 5000; //Wait up till 5 sec to start thruster firing, if >5s pass -> error -> abort firing
   unsigned long LastOff = (unsigned long)max(max(t1, t2), max(t3, t4));
@@ -932,7 +913,12 @@ void fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsi
   while (millis() <= sTime) {
     if (millis() > delayendT) {
       //TODO Timing Error
-      return;
+      //Ensure all Values Are Closed on Edge Cases (Probably Redundant)
+      digitalWrite(Valve1, LOW);
+      digitalWrite(Valve2, LOW);
+      digitalWrite(Valve3, LOW);
+      digitalWrite(Valve4, LOW);
+      return false;
     }
   }
 
@@ -966,7 +952,7 @@ void fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsi
 
   //Ensure all Values Are Closed on Edge Cases (Probably Redundant)
   digitalWrite(Valve1, LOW);
-  digitalWrite(Valve2, LOW); 
+  digitalWrite(Valve2, LOW);
   digitalWrite(Valve3, LOW);
   digitalWrite(Valve4, LOW);
 
@@ -990,15 +976,28 @@ void fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsi
   SensorDataCollect();
   MSH.PresAfterFire = MSH.PressCurrent;
 
-  return;
+  return true;
 }
 
+void pressurizeTank2() {
+  unsigned long endT = millis()+FillTimeoutTime; //Fill
+  SensorDataCollect();
+  if (MSH.PressCurrent < PresThreshold) {
+    digitalWrite(Valve5, HIGH);
+    while (millis() < endT && MSH.PressCurrent < PresThreshold) {
+      SensorDataCollect();
+    }
+    digitalWrite(Valve5, LOW);
+  }
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////ADCS Functions/////////////////////////////////////////////////////////////////////////////////////////////////////
+////ADCS Functions//////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-/* Supported Commands ADCS Can Recieved
+/* Supported Commands ADCS Can Recieve
   //TODO
 */
 
@@ -1112,28 +1111,24 @@ void sendIMUToADCS() {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///Radio Uplink/Downlink Functions//////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-// Radio Uplink/Downlink Functions
-
+//TODO find which Serial the Quake Uses, Serial3?
 
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Piksi GPS Functions
-
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////Piksi GPS Functions////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// GomSpace Battery Functions
+//TODO find which Serial the Piksi Uses, Serial1?
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///GomSpace Battery Functions///////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 //p31u-6
 //public typedef struct {
@@ -1218,7 +1213,7 @@ void sendIMUToADCS() {
 //  }
 //  i = 0;
 //
-//
+//  //CAN CAST DIRECTLY!!! Easy conversion
 //
 //
 //
@@ -1244,23 +1239,44 @@ void sendIMUToADCS() {
 //
 //}
 //
-//bool pingGS() {
-//  //Pings the GomSpace Board to verify that its functioning, ping returns whatever value is sent to it.
-//  Wire.beginTransmission(0x0C);
-//  Wire.write(1);
-//  Wire.write(7);
-//  delayMicroseconds(5);
-//
-//  uint8_t r;
-//  while (Wire.available()) {
-//    r = Wire.read();
-//  }
-//  if (r == 7) {
-//    return true;
-//  } else {
-//    return false;
-//  }
-//}
+
+bool pingGS() {
+  //Pings the GomSpace Board to verify that its functioning, ping returns whatever value is sent to it.
+  Wire.beginTransmission(0x0C);
+  Wire.write(1);
+  Wire.write(7);
+  delayMicroseconds(5);
+
+  uint8_t r = 0;
+  while (Wire.available()) {
+    r = Wire.read();
+  }
+  if (r == 7) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void kickGS(bool p = false) {
+  //Kicks the GomSpace Board to Reset WDT
+  Wire.beginTransmission(0x02);
+  Wire.write(16);
+  Wire.write(0x78);
+  Wire.endTransmission(false);
+  delay(5);
+
+  //uint8_t r;
+  Wire.requestFrom(0x02, 3);
+  while (Wire.available()) {
+    Wire.read(); //Can read from here
+  }
+#ifdef USBCONNECT
+  if (p) {
+    Serial.print("<K>");
+  }
+#endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////GNC Calculation///////////////////////////////////////////////////////////////////////////////////////////////
@@ -1282,7 +1298,7 @@ void * GNC_calcNextFiring() {
     //BoilerPlate for Testing
     eData[0] = 10; eData[1] = 10;  eData[2] = 10;  eData[3] = 10;
     e->eventData = eData;
-    e->sTime = millis() + random(5000, 15000); //Random Start time 5-15s in future for testing
+    e->sTime = millis() + random(5000, 15000); //TODO Random Start time 5-15s in future for testing
     e->id = 1;
     return e;
   } else {
@@ -1291,8 +1307,8 @@ void * GNC_calcNextFiring() {
     int * eData = (int*)malloc(sizeof(int) * 1);
     eData[0] = 1;
     e->eventData = eData;
-    e->sTime = 2147483647; //Abitrary Large Value
-    e->id = 1;
+    e->sTime = 0; //Void Event Will be processed Instantly
+    e->id = 0;
     return e;
   }
 }
@@ -1300,17 +1316,20 @@ void * GNC_calcNextFiring() {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////Setup and Main Loop////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Stall() {
   stall = true;
   long start = millis();
+#ifdef USBCONNECT
   Serial.println("Stall Delay");
+#endif
   while (millis() - start < 3000) { //(stall) {
     delay(80);
     Serial.print(".");
   }
+
 }
 
 //// Main Loop
@@ -1329,7 +1348,9 @@ void setup() {
   initalizePinOut();
 
   //Start IMU/Mag/Gyro
+#ifdef USBCONNECT
   Serial.println(F("\nStarting IMU"));
+#endif
   bool imuI = IMUInit(); //TODO Check? Loop?
   if (!imuI) {
     //TODO Raise IMU Fail Flag
@@ -1353,15 +1374,19 @@ void loop() {
   //Mode Controller
   //  Determined MSH.
 
-  //Process Next Scheduled Event if it Starts in less than 1s //TODO make Variable Prep Time
-  if (millis() - MSH.Sch.getNextEventTime() < 1000) { //
+  //Process Next Scheduled Event if it Starts in less than 1s //TODO make Variable Prep Time?
+  if (MSH.Sch.getNextEventTime() - millis() <= 1000) { //
     Event *e = (Event *)MSH.Sch.getNextEvent();
 
     switch (e->id) {
-      case (0): //Void
+      case (0): //Void Event
+#ifdef USBCONNECT
+        Serial.print(F("Void Event Processed at T = "));
+        Serial.println(millis());
+#endif
         break;
 
-      case (1): //Thruster Firing
+      case (1): //Thruster Firing (This waits until Thrusters Firing is over)
         fireThrusters(e->sTime, e->eventData[0], e->eventData[1], e->eventData[2], e->eventData[3]);
         break;
 
@@ -1379,6 +1404,9 @@ void loop() {
 
   }
 
+  //WatchDog Timer
+  kickGS(); //Reset Timer so GS doesn't reboot
+
   switch (MSH.State) {
     case (NORMAL_OPS): {
 
@@ -1386,19 +1414,17 @@ void loop() {
         SensorDataCollect();
 
         //GNC Calculation
-        //TODO Verify
         if (millis() - lastGNCime >= 10000) { //GNCMinTime) { //10s for testing
-          if (MSH.PressCurrent > PresThreshold) {
+          if (MSH.PressCurrent > PresThreshold) { //Dont Calculate unless Tank is Ready to Fire
             Event * e = (Event *)GNC_calcNextFiring();
             MSH.Sch.addEvent(e);
             lastGNCime = millis();
           }
         }
 
-        //Thruster Firing
+        //Pressurize Tank and maintain Temp
 
         //ADCS Calculation
-
 
         //Downlinks
         if (millis() - lastDLTime >= DLTime || commandedDL) {
@@ -1418,20 +1444,25 @@ void loop() {
           //unsigned long t = millis();
           if (millis() - lastADCSComAttempt >= ADCSComTime) {
             lastADCSComAttempt = millis();
+#ifdef USBCONNECT
             Serial.print("<IMU>");
+#endif
             sendIMUToADCS();
             bool ADCSResponse = requestFromADCS();
             if (ADCSResponse) {
               lastADCSComTime = millis(); //Reset Timeout if Com is successful
             } else {
+#ifdef USBCONNECT
               Serial.print(F("No Reply From ADCS for "));
               Serial.print((millis() - lastADCSComTime) / 1000.0);
               Serial.println(F(" seconds"));
+#endif
             }
           }
         }
 
         //ADCS Testing Display
+#ifdef USBCONNECT
         if (millis() - LastSpinCheckT > SpinCheckTime) {
           Serial.print(("<G:") + String(MSH.Gyro[0], 2) + "|" +
                        String(MSH.Gyro[1], 2) + "|" +
@@ -1444,14 +1475,15 @@ void loop() {
                        String(MSH.Accel[2], 2) + ">");
           LastSpinCheckT = millis();
         }
-
+#endif
 
         //Low Power Detection
         if (millis() - LastBattCheck > BattCheckTime) {
 
           //TODO GomSpace Packet Fetch
-
+#ifdef USBCONNECT
           Serial.print("<B:" + String(MSH.Battery) + ">");
+#endif
           if (MSH.Battery <= LV_Threshold) {
             //MSH.NextState = LOW_POWER; //TODO
             lowPowerEntry = millis();
@@ -1473,7 +1505,9 @@ void loop() {
             T_avg += MSH.Temp[i];
           }
           T_avg = T_avg / 4.0;
+#ifdef USBCONNECT
           Serial.print("<T" + String((float)T_avg) + ">");
+#endif
         }
         break;
       }
@@ -1517,6 +1551,7 @@ void loop() {
 
   if (true && ((millis() - LastTimeTime) > TimeTime)) { //Prevent Screen Spam
     long t = millis();
+#ifdef USBCONNECT
     Serial.print("[" + String((millis() - LastTimeTime) / 1000.0) + "]"); //Cycle Lag
     String s = ("\n[System Time: " + String(t / (long)(60 * 60 * 1000)) + ":" +
                 String(t / ((long)60 * 1000) % ((long)60 * 1000)) + ":");
@@ -1527,6 +1562,7 @@ void loop() {
           "][" + String(MSH.State) + "]");
     s += ("[" + String(freeRam() / 1024.0, 3) + "kB]");
     Serial.print(s);
+#endif
     LastTimeTime = t;
     cycle = 1;
   }

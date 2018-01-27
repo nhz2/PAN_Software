@@ -3,6 +3,8 @@
 #include <LIS3MDL.h>
 #include <LSM6.h>
 #include <EEPROM.h>
+#include <time.h>
+#include <BigNumber.h>
 
 #define USBCONNECT //Inlines Ground Testing Functions. Remove Before Flight
 
@@ -13,6 +15,13 @@
 #define ECLIPSE         4
 #define SAFE_HOLD       5
 #define DOCKED          6
+
+//Safe Hold Flags
+#define Reserved        0
+#define OVERSPIN        1
+#define OVERHEAT        2
+#define UNDERHEAT       3
+#define LOWVOLTAGE      4
 
 bool WireConnected = true;
 unsigned long LastTimeTime = 0;
@@ -74,6 +83,8 @@ float OmegaThreshold = 30; //Degrees per second
 //Thermal Test
 unsigned long LastThermalCheck = 0;
 unsigned long ThermalCheck = 6100;
+float OverheatTemp = 60; //C //TODO set Value
+float UnderheatTemp = -10; //C //TODO set Value
 
 //Serial Command Test
 int popTime = 4000;
@@ -91,6 +102,8 @@ unsigned long lastGNCime;
 unsigned long GNCMinTime = 1000 * 60; //Min of 1min between GNC Calculations
 
 //Propulsion Values
+unsigned long presCheckTime = 10000; //10s to let pressure stabilize between fill increments
+unsigned long lastPressTime = 0;
 float PresThreshold = 14; //TODO Find real Values and Range
 unsigned long FillTimeoutTime = 10000; //Time to abort Tank Filling After, Currently 10s
 #define SPIKE_HOLD_DELAY 20 //20us between Thruster Spike and Holds starting
@@ -124,18 +137,31 @@ unsigned long FillTimeoutTime = 10000; //Time to abort Tank Filling After, Curre
 
 bool DA_Initialize;
 
-class floatTuple
+class vec3
 {
   public:
-    float x;
-    float y;
-    float z;
+    BigNumber x;
+    BigNumber y;
+    BigNumber z;
 
-    floatTuple(float a, float b, float c) {
+    vec3(float a = 0, float b = 0, float c = 0) {
+      x = BigNumber(a);
+      y = BigNumber(b);
+      z = BigNumber(c);
+    }
+
+    vec3(BigNumber a, BigNumber b, BigNumber c) {
       x = a;
       y = b;
       z = c;
     }
+
+    ~vec3() {
+      x.~BigNumber();
+      y.~BigNumber();
+      z.~BigNumber();
+    }
+
     void print() {
 #ifdef USBCONNECT
       Serial.print(x); Serial.print(F(" "));
@@ -143,7 +169,55 @@ class floatTuple
       Serial.print(z); Serial.println(F(" "));
 #endif
     }
+
+    BigNumber dot(vec3 a) {
+      return a.x * x + a.y * y + a.z * z;
+    }
+
+    BigNumber magnitude() {
+      return pow(x * x + y * y + z * z, 0.5);
+    }
+
+    void cross(vec3 v, vec3 res) {
+      res.x = (y * v.z - (v.y * z));
+      res.y = (v.x * z - (x * v.z));
+      res.z = (x * v.y - (v.x * y));
+    }
+
+    void scale(BigNumber a) {
+      x *= a;
+      y *= a;
+      z *= a;
+    }
+
+    void copyVec3(vec3 a) {
+      a.x = x;
+      a.y = y;
+      a.z = z;
+    }
+
+    void subtract(vec3 a, vec3 res) {
+      res.x = x - a.x;
+      res.y = y - a.y;
+      res.z = z - a.z;
+    }
 };
+
+//float dot(vec3 a, vec3 b) {
+//  //u dot v
+//  return (a.x * b.x + a.y * b.y + a.z * b.z);
+//}
+//
+//void cross(vec3 u, vec3 v, vec3 res) {
+//  //u cross v = res
+//  res.x = (u.y * v.z - (v.y * u.z));
+//  res.y = (v.x * u.z - (u.x * v.z));
+//  res.z = (u.x * v.y - (v.x * u.y));
+//}
+//
+//float magnitude(vec3 u) {
+//  return pow(pow(u.x, 2) + pow(u.y, 2) + pow(u.z, 2), 0.5);
+//}
 
 void print_binary(int v, int num_places) {
 #ifdef USBCONNECT
@@ -222,6 +296,9 @@ class Scheduler {
 
     bool addEvent(Event * e) {
       if (Stored >= 20) {
+        //Destroy Event to Prevent RAM Leak
+        free(e->eventData);
+        free(e);
         return false;
       } else {
         int ind = 0;
@@ -265,8 +342,10 @@ class Scheduler {
         free(Events[i]);
         Events[i] = (Event *)0;
       }
+      Stored = 1;
       Stored = 0;
     }
+
 
 };
 
@@ -332,6 +411,9 @@ class masterStatus {
     bool hardwareAvTable[11];//Hardware Avaliability Table
     //[Imu, SX+,SX-,SY+, SY-, SZ+, SZ-,Temp,DoorSense,LightSense,ADCS]
     //Fix PopCommand Av Swap Limit if changed
+
+    //Safe Hold Flag
+    int SafeHoldFlag;
 
     // change final string to binary. get bytes. find upper and lower limits. round floats and set value for maxes (like MAX)
     int State;
@@ -412,6 +494,16 @@ class masterStatus {
     //GPS Data Holder
     GPSData GPS;
 
+    //Orbital Parameters
+    //  [a,e,i,Omega,argp,nu]
+    BigNumber SemiMajorAxis;
+    BigNumber Eccentricity;
+    BigNumber Inclination;
+    BigNumber Omega;
+    BigNumber ArgPeri;
+    BigNumber TrueAnomaly;
+
+
     //Power System Variables
     float voltage;
     float input_current;
@@ -457,7 +549,8 @@ class masterStatus {
 
     //Radio Message Variables
 
-
+    //System Time Reference Values
+    time_t SystemTime; //TODO explore
 
     masterStatus() {
       //Constructor
@@ -468,6 +561,9 @@ class masterStatus {
 
       //bool hardwareAvTable[10] = {true}; // Hardware Avaliability Table
       //TODO
+
+      //Entering Safe Hold Flag
+      SafeHoldFlag = 0;
 
       //IMU
 
@@ -516,21 +612,22 @@ void getIMUData() {
 }
 
 void getTempSensors() {
+  //Toggel TempMux to read Temperature Sensors
   digitalWrite(TempMux1, LOW);
   digitalWrite(TempMux2, LOW);
   delayMicroseconds(5);
-  MSH.TempAcc[0] += analogRead(TempMuxRead) * (3.3 / 1024.0) * 1000; //mV //TODO Degrees C
+  MSH.TempAcc[0] += int(analogRead(TempMuxRead) * (3.3 / 1024.0) * 1000); //mV //TODO Degrees C
   digitalWrite(TempMux2, HIGH);
   delayMicroseconds(5);
-  MSH.TempAcc[1] += analogRead(TempMuxRead) * (3.3 / 1024.0) * 1000; //mV
+  MSH.TempAcc[1] += int(analogRead(TempMuxRead) * (3.3 / 1024.0) * 1000); //mV
   digitalWrite(TempMux1, HIGH);
   digitalWrite(TempMux2, LOW);
   delayMicroseconds(5);
-  MSH.TempAcc[2] += analogRead(TempMuxRead) * (3.3 / 1024.0) * 1000; //mV
+  MSH.TempAcc[2] += int(analogRead(TempMuxRead) * (3.3 / 1024.0) * 1000); //mV
   digitalWrite(TempMux1, HIGH);
   digitalWrite(TempMux2, HIGH);
   delayMicroseconds(5);
-  MSH.TempAcc[3] += analogRead(TempMuxRead) * (3.3 / 1024.0) * 1000; //mV
+  MSH.TempAcc[3] += int(analogRead(TempMuxRead) * (3.3 / 1024.0) * 1000); //mV
   digitalWrite(TempMux1, LOW);
   digitalWrite(TempMux2, LOW);
 }
@@ -539,8 +636,10 @@ void SensorDataCollect(int type = 0) {
   //Collect Sensor Data and Average it if sufficient time has passed
   //TODO Force multiple runs after long functions has run
   getIMUData();
+  getTempSensors();
   DataRecords++;
   //TODO Measure Tank2 Pressure
+  //TODO Measure Temps
   if (millis() - lastSensorTime > SensorDwell) { //SensorDwell ~10ms
     //Add Any Averaging Data
 
@@ -679,8 +778,9 @@ void buildBuffer(String com) {
 }
 
 boolean isInputValid(String input) {
+  //TODO Test with decimal Command Data
   //Check if incoming command string <input> is valid
-  int lastPunc = 0; //1 if ",", 2 if "!", 0 Otherwise
+  int lastPunc = 0; //1 if ",", 2 if "!", 3 if ".", 0 Otherwise
   bool valid = true;
   unsigned int q = 0;
   unsigned int l = input.length();
@@ -702,7 +802,7 @@ boolean isInputValid(String input) {
           //Serial.println("Comma OK");
           lastPunc = 1;
         } else {
-          //Serial.println("2 Commas");
+          //Serial.println("2 Commas or Prior Decimal Point");
           valid = false;
           break;
         }
@@ -713,8 +813,8 @@ boolean isInputValid(String input) {
           break;
         }
         //Serial.println("Excl Found");
-        if (lastPunc == 1) {
-          //Serial.println("Period ok");
+        if (lastPunc == 1 || lastPunc == 3) {
+          //Serial.println("Comma ok");
           lastPunc = 2;
         } else {
           //Serial.println("2 Excl or No prior comma");
@@ -730,6 +830,22 @@ boolean isInputValid(String input) {
           valid = false;
           break;
         }
+      } else if (currentChar == ('.')) {
+        if (lastPunc == 1) {
+          //Decimal Point After comma "ok"
+          if (!isDigit(input[q - 2])) {
+            //No Digit Before Decimal
+            valid = false;
+            break;
+          } else {
+            //Valid Position
+          }
+        } else {
+          //Decimal Point in Command ID or 2 Decimal Points in Value
+          valid = false;
+          break;
+        }
+        lastPunc = 3;
       } else {
         //Serial.println("Invalid Punc");
         valid = false;
@@ -931,6 +1047,7 @@ bool fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsi
   digitalWrite(Valve4, HIGH);
   delayMicroseconds(SPIKE_HOLD_DELAY);
 
+  //TODO Stagger and Establish SPIKE_HOLD_DELAY?
   while (millis() >= endLastOff) {
     if (On[0] && millis() > endt1) {
       digitalWrite(Valve1, LOW);
@@ -957,7 +1074,7 @@ bool fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsi
   digitalWrite(Valve4, LOW);
 
   //Update Counters and MSH info
-  //TODO ThrustFiring; //0-14 Last thrust firing combination
+  MSH.ThrustFiring = genThrustFiringID(t1, t2, t3, t4); //0-14 Last thrust firing combination. See below
   MSH.ThrustStart = sTime; //Millis Time for thruster to fire
   MSH.ThurstDuration = LastOff; //Duration of firing in millis
   if (t1 > 0) {
@@ -979,8 +1096,63 @@ bool fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsi
   return true;
 }
 
+int genThrustFiringID(unsigned long t1, unsigned long t2, unsigned long t3, unsigned long t4) {
+  if (t1 <= 0 && t2 <= 0 && t3 <= 0 && t4 <= 0) {
+    return 0; //All Off
+  }
+  else if (t1 > 0 && t2 <= 0 && t3 <= 0 && t4 <= 0) {
+    return 1; //1
+  }
+  else if (t1 <= 0 && t2 > 0 && t3 <= 0 && t4 <= 0) {
+    return 2; //2
+  }
+  else if (t1 <= 0 && t2 <= 0 && t3 > 0 && t4 <= 0) {
+    return 3; //3
+  }
+  else if (t1 <= 0 && t2 <= 0 && t3 <= 0 && t4 > 0) {
+    return 4; //4
+  }
+  else if (t1 > 0 && t2 > 0 && t3 <= 0 && t4 <= 0) {
+    return 5; //1 and 2
+  }
+  else if (t1 > 0 && t2 <= 0 && t3 > 0 && t4 <= 0) {
+    return 6; //1 and 3
+  }
+  else if (t1 > 0 && t2 <= 0 && t3 <= 0 && t4 > 0) {
+    return 7; //1 and 4
+  }
+  else if (t1 <= 0 && t2 > 0 && t3 > 0 && t4 <= 0) {
+    return 8; //2 and 3
+  }
+  else if (t1 <= 0 && t2 > 0 && t3 <= 0 && t4 > 0) {
+    return 9; //2 and 4
+  }
+  else if (t1 <= 0 && t2 <= 0 && t3 > 0 && t4 > 0) {
+    return 10; //3 and 4
+  }
+  else if (t1 > 0 && t2 > 0 && t3 > 0 && t4 <= 0) {
+    return 11; //1, 2, and 3
+  }
+  else if (t1 > 0 && t2 > 0 && t3 <= 0 && t4 > 0) {
+    return 12; //1, 2, and 4
+  }
+  else if (t1 > 0 && t2 <= 0 && t3 > 0 && t4 > 0) {
+    return 13; //1, 3, and 4
+  }
+  else if (t1 <= 0 && t2 > 0 && t3 > 0 && t4 > 0) {
+    return 14; //2, 3, and 4
+  }
+  else if (t1 > 0 && t2 > 0 && t3 > 0 && t4 > 0) {
+#ifdef USBCONNECT
+    Serial.println("\nFiring Error: All thruster on times > 0");
+#endif
+    return 15;
+  } //All on (Error)
+  return -1; //Unknown Error
+}
+
 void pressurizeTank2() {
-  unsigned long endT = millis()+FillTimeoutTime; //Fill
+  unsigned long endT = millis() + FillTimeoutTime; //Fill Time for 1 iteration
   SensorDataCollect();
   if (MSH.PressCurrent < PresThreshold) {
     digitalWrite(Valve5, HIGH);
@@ -1003,13 +1175,13 @@ void pressurizeTank2() {
 
 bool IMUInit() {
   //Initialize Default Scale of IMU/Mag
-  //TODO init failure flag somewhere
+  //TODO init failure flag somewhere and Command to re-init
   unsigned long endT = millis() + manualTimeout;
   bool successMag = false;
   bool successImu = false;
   while (millis() < endT) {
     if (mag.init()) {
-      successImu = true;
+      successMag = true;
       mag.enableDefault();
       break;
     }
@@ -1023,7 +1195,6 @@ bool IMUInit() {
       break;
     }
   }
-
   return (successMag && successImu);
 }
 
@@ -1041,7 +1212,8 @@ void sendADCSCommand(String data) {
 }
 
 void sectionReadToValue(String s, int * data, int dataSize) {
-  //Convert Array of Strings <s> to Array of ints <data> with size <dataSize>
+  //Convert Array of Strings <s> delimited by ',' to Array of ints <data> with size <dataSize>
+  //TODO check what kind of data needs to return
   for (int i = 0; i < dataSize; i++) {
     data[i] = (s.substring(0, s.indexOf(','))).toInt();
     s = s.substring(s.indexOf(',') + 1);
@@ -1053,7 +1225,7 @@ bool requestFromADCS() {
   String res = "";
   bool success = false;
   if (WireConnected) {
-    Wire.requestFrom(11, 40, true); // request 10 bytes from ADCS device #TODO
+    Wire.requestFrom(11, 40, true); // request 10 bytes from ADCS device //TODO fix size
     //delay(50);
     unsigned long endTime = millis() + manualTimeout;
     //Serial.println("Here");
@@ -1131,24 +1303,24 @@ void sendIMUToADCS() {
 
 
 //p31u-6
-//public typedef struct {
-//  uint16_t pv[3]; //Photo-voltaic input voltage [mV]
-//  uint16_t pc; //Total photo current [mA]
-//  uint16_t bv; //Battery voltage [mV]
-//  uint16_t sc; //Total system current [mA]
-//  int16_t temp[4]; //Temp. of boost converters (1,2,3) and onboard battery [degC]
-//  int16_t batt_temp[2]; //External board battery temperatures [degC];
-//  uint16_t latchup[6]; //Number of latch-ups on each output 5V and +3V3 channel
-//  //Order[5V1 5V2 5V3 3.3V1 3.3V2 3.3V3]
-//  //Transmit as 5V1 first and 3.3V3 last
-//  uint8_t reset; //Cause of last EPS reset
-//  uint16_t bootcount; //Number of EPS reboots
-//  uint16_t sw_errors; //Number of errors in the eps software
-//  uint8_t ppt_mode; //0 = Hardware, 1 = MPPT, 2 = Fixed SW PPT.
-//  uint8_t channel_status; //Mask of output channel status, 1=on, 0=off
-//  //MSB - [QH QS 3.3V3 3.3V2 3.3V1 5V3 5V2 5V1] - LSB
-//  // QH = Quadbat heater, QS = Quadbat switch
-//} hkparam_t;
+typedef struct {
+  uint16_t pv[3]; //Photo-voltaic input voltage [mV]
+  uint16_t pc; //Total photo current [mA]
+  uint16_t bv; //Battery voltage [mV]
+  uint16_t sc; //Total system current [mA]
+  int16_t temp[4]; //Temp. of boost converters (1,2,3) and onboard battery [degC]
+  int16_t batt_temp[2]; //External board battery temperatures [degC];
+  uint16_t latchup[6]; //Number of latch-ups on each output 5V and +3V3 channel
+  //Order[5V1 5V2 5V3 3.3V1 3.3V2 3.3V3]
+  //Transmit as 5V1 first and 3.3V3 last
+  uint8_t reset; //Cause of last EPS reset
+  uint16_t bootcount; //Number of EPS reboots
+  uint16_t sw_errors; //Number of errors in the eps software
+  uint8_t ppt_mode; //0 = Hardware, 1 = MPPT, 2 = Fixed SW PPT.
+  uint8_t channel_status; //Mask of output channel status, 1=on, 0=off
+  //MSB - [QH QS 3.3V3 3.3V2 3.3V1 5V3 5V2 5V1] - LSB
+  // QH = Quadbat heater, QS = Quadbat switch
+} hkparam_t;
 
 //p31u-8 and p31u-9
 //typedef struct eps_hk_vi_t __attribute__((packed)) { //20 bytes
@@ -1195,50 +1367,50 @@ void sendIMUToADCS() {
 //  //Serial.println(tmp.
 //}
 //
-//void fetchHouseKeeping() {
-//  //Fetch eps_hk_vi_t
-//  Wire.beginTransmission(0x0C);
-//  Wire.write(8);
-//  Wire.write(1);
-//  delayMicroseconds(5);
-//
-//  byte temp[100] = {0};
-//  byte hk_vi_t[20] = {0};
-//
-//  //Read Retu
-//  int i = 0;
-//  while (Wire.available()) {
-//    temp[i] = Wire.read();
-//    i++;
-//  }
-//  i = 0;
-//
-//  //CAN CAST DIRECTLY!!! Easy conversion
-//
-//
-//
-//}
-//
-//
-//void rebootGS() {
-//  //Sends Magic Sequence to Board to reboot the GS
-//  int outgoingByte[] = {0x80};
-//  int outgoingByte1[] = {0x07};
-//  int outgoingByte2[] = {0x80};
-//  int outgoingByte3[] = {0x07};
-//  Wire.write(outgoingByte[0]);
-//  Wire.write(outgoingByte1[0]);
-//  Wire.write(outgoingByte2[0]);
-//  Wire.write(outgoingByte3[0]);
-//
-//  rtrn = Wire.endTransmission(false);
-//}
-//
-//
-//void setGomSpaceSlaveMode() {
-//
-//}
-//
+void fetchHouseKeeping() {
+  //Fetch eps_hk_vi_t
+  Wire.beginTransmission(0x0C);
+  Wire.write(8);
+  Wire.write(1);
+  delayMicroseconds(5);
+
+  byte temp[100] = {0};
+  byte hk_vi_t[20] = {0};
+
+  //Read Retu
+  int i = 0;
+  while (Wire.available()) {
+    temp[i] = Wire.read();
+    i++;
+  }
+  i = 0;
+
+  //CAN CAST DIRECTLY!!! Easy conversion
+
+
+
+}
+
+
+void rebootGS() {
+  //Sends Magic Sequence to Board to reboot the GS
+  int outgoingByte[] = {0x80};
+  int outgoingByte1[] = {0x07};
+  int outgoingByte2[] = {0x80};
+  int outgoingByte3[] = {0x07};
+  Wire.write(outgoingByte[0]);
+  Wire.write(outgoingByte1[0]);
+  Wire.write(outgoingByte2[0]);
+  Wire.write(outgoingByte3[0]);
+
+  Wire.endTransmission(false);
+}
+
+
+void setGomSpaceSlaveMode() {
+
+}
+
 
 bool pingGS() {
   //Pings the GomSpace Board to verify that its functioning, ping returns whatever value is sent to it.
@@ -1282,6 +1454,94 @@ void kickGS(bool p = false) {
 //////////GNC Calculation///////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+BigNumber inverseCosTS(BigNumber n) {
+  //9 Term Taylor Expansion of Inverse Cosine
+  if (n > 1 || n < 1) {
+    //Error
+    return BigNumber(2);
+  }
+  BigNumber a;
+  a = 3.1415926535 / 2 - n - (pow(n, 3) / 6.0) - (pow(n, 5) * 3.0 / 40) - (pow(n, 7) * 5.0 / 112) - (pow(n, 9) * 35.0 / 1152); //-(pow(n,11)*63/2816)
+  return a;
+}
+
+void genOrbitalElements(vec3 posECI, vec3 velECI) {
+  //Generate Orbital Elements from Earth Centered Intertial Position and Velocity
+  // elements[6] = [a,e,i,BigOmega,SmallOmega,nu]
+  BigNumber ZERO = BigNumber(0); //Zero for Comparisons
+  //Calc Angular Momentum: h
+  vec3 h = vec3();
+  posECI.cross(velECI, h);
+
+  //Calc Node Vector: nhat
+  vec3 n = vec3();
+  vec3 khat = vec3(0, 0, 1);
+  khat.cross(h, n);
+
+  //Calculate Eccentricity: e
+  //62,564,815.8531 = mu/r
+  BigNumber mu_r = BigNumber("62564815.8531");
+  BigNumber mu = BigNumber("398600441800000");
+  vec3 v1 = vec3();
+  vec3 v2 = vec3();
+  posECI.copyVec3(v1);
+  velECI.copyVec3(v2);
+  v1.scale(pow(velECI.magnitude(), 2) - mu_r);
+  v2.scale(posECI.dot(velECI));
+  vec3 evec = vec3();
+  v1.subtract(v2, evec);
+  evec.scale(1 / mu);
+  MSH.Eccentricity = evec.magnitude(); //Store e
+
+  //Specific Mechanical Energy: E
+  //Semimajor Axis: a
+  //Semi-latus Rectum: p
+  BigNumber mechEnergy = (velECI.dot(velECI) * BigNumber(0.5)) - mu_r;
+  MSH.SemiMajorAxis = BigNumber(ZERO); //0 is inf for parabolic orbit //TODO test
+  BigNumber p = BigNumber(ZERO); //0 is temp
+  if ((MSH.Eccentricity - BigNumber(1)) < BigNumber("0.00000001")) {
+    //Parabolic Orbit
+    //MSH.SemiMajorAxis = inf
+    p = h.dot(h) / mu;
+  } else {
+    MSH.SemiMajorAxis = -1.0 * mu / (2.0 * mechEnergy);
+    p = MSH.SemiMajorAxis * (BigNumber(1.0) - BigNumber(pow(MSH.Eccentricity, 2)));
+  }
+
+  //Inclination: i
+  MSH.Inclination = inverseCosTS(h.z / h.magnitude());
+
+  //Longitude of Ascending Node: Omega
+  if (MSH.Inclination != ZERO || n.magnitude != ZERO) {
+    MSH.Omega = inverseCosTS(n.x / n.magnitude());
+    if (n.y < 0) {
+      MSH.Omega = 2 * 3.1415926535 - MSH.Omega;
+    }
+  } else {
+    MSH.Omega = BigNumber(0); //Ascending Node Undefined for equatorial orbits
+  }
+
+  //Argument of Periapsis: argp
+  if (MSH.Eccentricity != ZERO || n.magnitude() != ZERO)) {
+    MSH.ArgPeri = inverseCosTS(n.dot(evec) / (n.magnitude() * MSH.Eccentricity));
+    if (evec.z < 0) {
+      MSH.ArgPeri = 2 * 3.1415926535 - MSH.ArgPeri;
+    }
+  } else {
+    MSH.ArgPeri = BigNumber(0);
+  }
+
+  //True Anomaly: nu
+  if (MSH.Eccentricity != ZERO)) {
+  MSH.TrueAnomaly = inverseCosTS(evec.dot(posECI) / (MSH.Eccentricity * posECI.magnitude()));
+    if (posECI.dot(velECI) < 0) {
+      MSH.TrueAnomaly = 2 * 3.1415926535 - MSH.TrueAnomaly;
+    }
+  } else {
+    MSH.TrueAnomaly = 0; //True Anomaly Undefined for perfectly circular orbits
+  }
+}
+
 
 void * GNC_calcNextFiring() {
   if (MSH.Sch.getNumStored() < 20) {
@@ -1307,7 +1567,7 @@ void * GNC_calcNextFiring() {
     int * eData = (int*)malloc(sizeof(int) * 1);
     eData[0] = 1;
     e->eventData = eData;
-    e->sTime = 0; //Void Event Will be processed Instantly
+    e->sTime = 0; //Void Event Will be destroyed instead of being added to queue
     e->id = 0;
     return e;
   }
@@ -1327,7 +1587,9 @@ void Stall() {
 #endif
   while (millis() - start < 3000) { //(stall) {
     delay(80);
+#ifdef USBCONNECT
     Serial.print(".");
+#endif
   }
 
 }
@@ -1340,9 +1602,13 @@ void setup() {
 #ifdef USBCONNECT
   Serial.begin(9600);
 #endif
+
+  //Command and Data Handling Initialization
   Wire.begin(); //Start i2c as master
   MSH = masterStatus(); //Create Master Status Object
   cBuf = commandBuffer(); //Create Command Buffer
+  BigNumber::begin(); //Start Arbitrary Precision Library
+  BigNumber::setScale(10); //Set Precision to 10 Decimal Points //TODO Verify size/memory validity
 
   //Set Pinout Registers
   initalizePinOut();
@@ -1354,6 +1620,9 @@ void setup() {
   bool imuI = IMUInit(); //TODO Check? Loop?
   if (!imuI) {
     //TODO Raise IMU Fail Flag
+#ifdef USBCONNECT
+    Serial.println(F("\nIMU FAILED TO INIT"));
+#endif
   }
 
   //Start Piksi GPS
@@ -1366,9 +1635,68 @@ void setup() {
   MSH.NextState = NORMAL_OPS;
 }
 
+void modeControl() {
+  switch (MSH.State) {
+    case (NORMAL_OPS): {
+
+        //Battery Voltage Check
+        if (millis() - LastBattCheck > BattCheckTime) {
+          if (MSH.Battery <= LV_Threshold) {
+            //TODO set threshold and response. ADCS Off -> Recharge -> Desat?
+            MSH.SafeHoldFlag = LOWVOLTAGE;
+            MSH.NextState = SAFE_HOLD; //TODO
+            lowPowerEntry = millis();
+          }
+          LastBattCheck = millis();
+        }
+
+
+        //Spin Check
+        if (millis() - LastSpinCheckT > SpinCheckTime) {
+          float spinMag = pow((pow(MSH.Gyro[0], 2) + pow(MSH.Gyro[1], 2) + pow(MSH.Gyro[2], 2)), 0.5);
+          if (spinMag > OmegaThreshold) {
+            //Overspin Detected
+
+            //TODO set threshold and response. Desat+Detumble?
+            MSH.SafeHoldFlag = OVERSPIN;
+            MSH.NextState = SAFE_HOLD;
+          }
+          LastSpinCheckT = millis();
+        }
+
+        //Thermal Over/Underheat Detection
+        if (millis() - LastThermalCheck > ThermalCheck) {
+          float T_avg = 0; //TODO Max? Min? Avg?
+          for (int i = 0; i < 4; i++) {
+            T_avg += MSH.Temp[i];
+          }
+          T_avg = T_avg / 4.0;
+
+          if (T_avg > OverheatTemp) {
+            //TODO set threshold and response. ADCS Off -> Wait?
+            MSH.SafeHoldFlag = OVERHEAT;
+            MSH.NextState = SAFE_HOLD; //TODO
+          } else if (T_avg < UnderheatTemp) {
+            //TODO set threshold and response. ADCS Spin Up?/Change Attitude? -> Wait?
+            MSH.SafeHoldFlag = UNDERHEAT;
+            MSH.NextState = SAFE_HOLD;
+          }
+          LastThermalCheck = millis();
+        }
+
+        //Eclipse Check
+        //Fault Detection
+        break;
+      }
+  }
+
+  //Change State
+  MSH.State = MSH.NextState;
+}
+
 void loop() {
 #ifdef USBCONNECT
-  readSerialAdd2Buffer(); //Testing Command Input //TODO #ifdef
+  readSerialAdd2Buffer(); //Testing Command Input
 #endif
 
   //Mode Controller
@@ -1414,15 +1742,25 @@ void loop() {
         SensorDataCollect();
 
         //GNC Calculation
-        if (millis() - lastGNCime >= 10000) { //GNCMinTime) { //10s for testing
+        if (millis() - lastGNCime >= 30000) { //GNCMinTime) { //30s for testing
           if (MSH.PressCurrent > PresThreshold) { //Dont Calculate unless Tank is Ready to Fire
             Event * e = (Event *)GNC_calcNextFiring();
             MSH.Sch.addEvent(e);
-            lastGNCime = millis();
+#ifdef USBCONNECT
+            Serial.print("<GNC>");
+#endif
+          } else {
+
           }
+          lastGNCime = millis();
         }
 
-        //Pressurize Tank and maintain Temp
+        //Propulsion Preperation
+        if (millis() - lastPressTime >= presCheckTime) {
+          if (MSH.PressCurrent > PresThreshold) {
+            pressurizeTank2(); //Cycle valves to Pressurize gaseous prop tank 2
+          }
+        }
 
         //ADCS Calculation
 
@@ -1461,7 +1799,7 @@ void loop() {
           }
         }
 
-        //ADCS Testing Display
+        //IMU Testing Display
 #ifdef USBCONNECT
         if (millis() - LastSpinCheckT > SpinCheckTime) {
           Serial.print(("<G:") + String(MSH.Gyro[0], 2) + "|" +
@@ -1473,46 +1811,33 @@ void loop() {
           Serial.print(("<AC:") + String(MSH.Accel[0], 2) + "|" +
                        String(MSH.Accel[1], 2) + "|" +
                        String(MSH.Accel[2], 2) + ">");
-          LastSpinCheckT = millis();
         }
 #endif
 
-        //Low Power Detection
-        if (millis() - LastBattCheck > BattCheckTime) {
-
-          //TODO GomSpace Packet Fetch
 #ifdef USBCONNECT
+        //Battery Power Display
+        if (millis() - LastBattCheck > BattCheckTime) {
+          //TODO GomSpace Packet Fetch in Update Sensors
           Serial.print("<B:" + String(MSH.Battery) + ">");
+        }
 #endif
-          if (MSH.Battery <= LV_Threshold) {
-            //MSH.NextState = LOW_POWER; //TODO
-            lowPowerEntry = millis();
-          }
-          LastBattCheck = millis();
-        }
 
-        //Eclipse Detection
-        //TODO
-        if (false) {
-          MSH.NextState = ECLIPSE;
-        }
-
-        //Thermal Protection/Control //TODO
+#ifdef USBCONNECT
+        //Thermal Protection/Control Display //TODO
         if (millis() - LastThermalCheck > ThermalCheck) {
-          LastThermalCheck = millis();
           float T_avg = 0; //TODO Max? Min? Avg?
           for (int i = 0; i < 4; i++) {
             T_avg += MSH.Temp[i];
           }
           T_avg = T_avg / 4.0;
-#ifdef USBCONNECT
-          Serial.print("<T" + String((float)T_avg) + ">");
-#endif
+
+          Serial.print("<T:" + String((float)T_avg) + ">");
         }
+#endif
         break;
       }
     case (DORMANT_CRUISE):
-      //30 min Dormant Cruise
+      //45 min Dormant Cruise
       if (millis() > 45 * 60 * 1000) {
         MSH.NextState = INITALIZATION;
         initEntry = millis();
@@ -1522,7 +1847,7 @@ void loop() {
       break;
 
     case (INITALIZATION): {
-        //TODO Checkout
+        //TODO Checkout and downlink
 
         if (millis() - initEntry > (long)2700000) { //Force to Normal Ops
           //call downlink function
@@ -1537,14 +1862,12 @@ void loop() {
         //TODO
       }
 
-
     case (SAFE_HOLD):
       MSH.NextState = NORMAL_OPS;
-      //TODO
+      //TODO wait for Uplink Commands
       break;
 
   }
-  MSH.State = MSH.NextState;
 
   //Testing Iterators
   cycle++;
@@ -1573,15 +1896,3 @@ void loop() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
-
-
-

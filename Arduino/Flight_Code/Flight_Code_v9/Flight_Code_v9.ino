@@ -550,7 +550,8 @@ class masterStatus {
     //Radio Message Variables
 
     //System Time Reference Values
-    time_t SystemTime; //TODO explore
+    time_t SystemTime; //TODO explore synchronization
+    long millisReferencePoint;
 
     masterStatus() {
       //Constructor
@@ -567,11 +568,10 @@ class masterStatus {
 
       //IMU
 
-
-      //Sensors
+      //Sensor Initial Values
       Battery = 3.8;
 
-      //ADCS
+      //ADCS Initial Conditions
       TorqX_PWM = 0;
       TorqY_PWM = 0;
       TorqZ_PWM = 0;
@@ -1512,7 +1512,7 @@ void genOrbitalElements(vec3 posECI, vec3 velECI) {
   MSH.Inclination = inverseCosTS(h.z / h.magnitude());
 
   //Longitude of Ascending Node: Omega
-  if (MSH.Inclination != ZERO || n.magnitude != ZERO) {
+  if (MSH.Inclination != ZERO || n.magnitude() != ZERO) {
     MSH.Omega = inverseCosTS(n.x / n.magnitude());
     if (n.y < 0) {
       MSH.Omega = 2 * 3.1415926535 - MSH.Omega;
@@ -1522,7 +1522,7 @@ void genOrbitalElements(vec3 posECI, vec3 velECI) {
   }
 
   //Argument of Periapsis: argp
-  if (MSH.Eccentricity != ZERO || n.magnitude() != ZERO)) {
+  if (MSH.Eccentricity != ZERO || n.magnitude() != ZERO) {
     MSH.ArgPeri = inverseCosTS(n.dot(evec) / (n.magnitude() * MSH.Eccentricity));
     if (evec.z < 0) {
       MSH.ArgPeri = 2 * 3.1415926535 - MSH.ArgPeri;
@@ -1532,7 +1532,7 @@ void genOrbitalElements(vec3 posECI, vec3 velECI) {
   }
 
   //True Anomaly: nu
-  if (MSH.Eccentricity != ZERO)) {
+  if (MSH.Eccentricity != ZERO) {
   MSH.TrueAnomaly = inverseCosTS(evec.dot(posECI) / (MSH.Eccentricity * posECI.magnitude()));
     if (posECI.dot(velECI) < 0) {
       MSH.TrueAnomaly = 2 * 3.1415926535 - MSH.TrueAnomaly;

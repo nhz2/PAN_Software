@@ -267,11 +267,11 @@ class Scheduler {
     bool insert(Event * e, int index) {
       if (Stored < 20) {
         Event * temp[20 - index] = {0};
-        for (int i = 0; i < 20 - index; i++) {
+        for (int i = 0; i < (20 - index); i++) {
           temp[i] = Events[index + i];
         }
         Events[index] = e;
-        for (int i = 0; i < 20 - index; i++) {
+        for (int i = 0; i < (20 - index); i++) {
           Events[index + i + 1] = temp[i];
         }
         Stored++;
@@ -1850,7 +1850,7 @@ void loop() {
 #ifdef USBCONNECT
         Serial.print(F("<VE:"));
         Serial.print(millis() / (1000.0));
-        Serial.print(":" + String((nextETime - millis()) / 1000.0) + ">");
+        Serial.print  b (":" + String((nextETime - millis()) / 1000.0) + ">");
 #endif
         break;
 
@@ -2027,9 +2027,12 @@ void loop() {
     MSH.Sch.print();
     long t = millis();
 #ifdef USBCONNECT
+    int hours = t / (long)(60 * 60 * 1000);
+    int mins = t / ((long)60 * 1000) % ((long)60 * 1000);
+    
     Serial.print("[" + String((millis() - (long)LastTimeTime) / 1000.0) + "s]"); //Cycle Lag
-    String s = ("\n[System Time: " + String(t / (long)(60 * 60 * 1000)) + ":" +
-                String(t / ((long)60 * 1000) % ((long)60 * 1000)) + ":");
+    String s = ("\n[System Time: " + String(hours) + ":" +
+                String(mins) + ":");
     if (((t / 1000) % ((long)1000) % 60) < 10) {
       s += '0';
     }

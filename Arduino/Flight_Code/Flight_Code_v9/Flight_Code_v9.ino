@@ -4,9 +4,9 @@
 #include <LSM6.h>
 #include <EEPROM.h>
 #include <time.h>
-#include <BigNumber.h>
-//hello
-#define USBCONNECT //Inlines Ground Testing Functions. Remove Before Flight
+#include "BigNumber.h"
+
+#define USBCONNECT  //Inlines Ground Testing Functions. Remove Before Flight
 
 //State Machine Definition
 #define DORMANT_CRUISE  1
@@ -135,8 +135,7 @@ unsigned long FillTimeoutTime = 10000; //Time to abort Tank Filling After, Curre
 // EEPROM.length()
 
 
-bool DA_Initialize;
-
+//
 class vec3
 {
   public:
@@ -175,13 +174,15 @@ class vec3
     }
 
     BigNumber magnitude() {
-      return pow(x * x + y * y + z * z, 0.5);
+      //Serial.print("mag: ");
+      //Serial.println((x * x + y * y + z * z).sqrt());
+      return (x * x + y * y + z * z).sqrt();
     }
 
-    void cross(vec3 v, vec3 res) {
-      res.x = (y * v.z - (v.y * z));
-      res.y = (v.x * z - (x * v.z));
-      res.z = (x * v.y - (v.x * y));
+    vec3 cross(vec3 v) { //, vec3 res) {
+      return (vec3(BigNumber((y * v.z) - (v.y * z)),
+                   BigNumber((v.x * z) - (x * v.z)),
+                   BigNumber((x * v.y) - (v.x * y))));
     }
 
     void scale(BigNumber a) {
@@ -190,16 +191,12 @@ class vec3
       z *= a;
     }
 
-    void copyVec3(vec3 a) {
-      a.x = x;
-      a.y = y;
-      a.z = z;
+    vec3 copyVec3() {
+      return vec3(x, y, z);
     }
 
-    void subtract(vec3 a, vec3 res) {
-      res.x = x - a.x;
-      res.y = y - a.y;
-      res.z = z - a.z;
+    vec3 subtract(vec3 a) {
+      return vec3(x - a.x, y - a.y, z - a.z);
     }
 };
 
@@ -312,12 +309,11 @@ class Scheduler {
       }
     }
 
-
     long getNextEventTime() {
       if (Stored > 0) {
         return Events[0]->sTime;
       } else {
-        return 0;
+        return -1;
       }
     }
 
@@ -342,11 +338,21 @@ class Scheduler {
         free(Events[i]);
         Events[i] = (Event *)0;
       }
-      Stored = 1;
       Stored = 0;
     }
 
-
+    void print() {
+#ifdef USBCONNECT
+      if (Stored) {
+        Serial.println("\nScheduler: " + String(Stored) + " Events Stored");
+        for (int i = 0; i < Stored; i++) {
+          int mins = Events[i]->sTime / 60000;
+          int secs = (Events[i]->sTime / 1000.0) - mins * 60;
+          Serial.println("  " + String(Events[i]->id) + ":" + String(mins) + ":" + String(secs));
+        }
+      }
+#endif
+    }
 };
 
 
@@ -402,6 +408,12 @@ class GPSData {
     }
 };
 
+BigNumber * SemiMajorAxis;
+BigNumber * Eccentricity;
+BigNumber * Inclination;
+BigNumber * Omega;
+BigNumber * ArgPeri;
+BigNumber * TrueAnomaly;
 
 class masterStatus {
     //Class to hold entire State of Spacecraft Operation except timers
@@ -495,13 +507,13 @@ class masterStatus {
     GPSData GPS;
 
     //Orbital Parameters
-    //  [a,e,i,Omega,argp,nu]
-    BigNumber SemiMajorAxis;
-    BigNumber Eccentricity;
-    BigNumber Inclination;
-    BigNumber Omega;
-    BigNumber ArgPeri;
-    BigNumber TrueAnomaly;
+    //[a, e, i, Omega, argp, nu] //May use Mean Anomaly
+    //    BigNumber * SemiMajorAxis;
+    //    BigNumber * Eccentricity;
+    //    BigNumber * Inclination;
+    //    BigNumber * Omega;
+    //    BigNumber * ArgPeri;
+    //    BigNumber * TrueAnomaly;
 
 
     //Power System Variables
@@ -575,6 +587,13 @@ class masterStatus {
       TorqX_PWM = 0;
       TorqY_PWM = 0;
       TorqZ_PWM = 0;
+
+      //      SemiMajorAxis = BigNumber(0);
+      //      Eccentricity = BigNumber(0);
+      //      Inclination = BigNumber(0);
+      //      Omega = BigNumber(0);
+      //      ArgPeri = BigNumber(0);
+      //      TrueAnomaly = BigNumber(0);
     }
 
 
@@ -582,6 +601,23 @@ class masterStatus {
       //Produces Output in ASCII for Printing and Downlink
       //TODO
       return "TODO";
+    }
+
+    void printOrbit() {
+      Serial.println("\nOrbital Parameters: ");
+      Serial.print("  Semimajor Axis: ");
+      Serial.println(*SemiMajorAxis);
+      Serial.print("  Eccentricity: ");
+      Serial.println(*Eccentricity);
+      Serial.print("  Inclination: ");
+      Serial.println((*Inclination));
+      Serial.print("  Omega: ");
+      Serial.println((*Omega));
+      Serial.print("  ArgPeri: ");
+      Serial.println(*ArgPeri);
+      Serial.print("  TrueAnomaly: ");
+      Serial.println(*TrueAnomaly);
+
     }
 
     String OutputString() {
@@ -597,9 +633,9 @@ class masterStatus {
 masterStatus MSH; //Declare MSH
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////// Sensor Functions ///////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////// Sensor Functions ///////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //IMU Code
 void getIMUData() {
@@ -698,12 +734,6 @@ class commandBuffer {
 };
 commandBuffer cBuf;
 
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 //Helper Functions
 
 void initalizePinOut() {
@@ -716,7 +746,7 @@ void initalizePinOut() {
   pinMode(TempMux2, OUTPUT);
   pinMode(Valve1, OUTPUT);
   pinMode(Valve2, OUTPUT);
-  pinMode(Valve3, OUTPUT);
+  pinMode(Valve3, OUTPUT); //LED!!!
   pinMode(Valve4, OUTPUT);
   pinMode(PressSens, INPUT);
   pinMode(TempMuxRead, INPUT);
@@ -749,10 +779,6 @@ String chop(float num, int p) {
   return s.substring(0, s.indexOf('.') + p + 1);
 }
 
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////Parser Functions
 
@@ -975,7 +1001,17 @@ void popCommands() {
         case (827): //Phototransistor mV
           MSH.PhotoTrans[14] = currentCommand[1];
           break;
-
+        case (100): { //Test Void Event
+            //Serial.println("Created Void Event");
+            Event *e = (Event *)malloc(sizeof(Event));
+            int * eData = (int*)malloc(sizeof(int) * 1);
+            eData[0] = 1;
+            e->eventData = eData;
+            e->sTime = millis() + currentCommand[1] * 1000;
+            e->id = 0;
+            MSH.Sch.addEvent(e);
+            break;
+          }
       }
     } else {
       //Serial.println("No Command");
@@ -1450,96 +1486,163 @@ void kickGS(bool p = false) {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////GNC Calculation///////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////GNC Calculation///////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 BigNumber inverseCosTS(BigNumber n) {
-  //9 Term Taylor Expansion of Inverse Cosine
-  if (n > 1 || n < 1) {
+  //9 Term Taylor Expansion of Inverse Cosine in Radians
+  if (n > 1 || n < -1) {
     //Error
-    return BigNumber(2);
+    return BigNumber(-1);
   }
+  BigNumber accSpeedUp = n.pow(3);
+  BigNumber  nSquared = n.pow(2);
   BigNumber a;
-  a = 3.1415926535 / 2 - n - (pow(n, 3) / 6.0) - (pow(n, 5) * 3.0 / 40) - (pow(n, 7) * 5.0 / 112) - (pow(n, 9) * 35.0 / 1152); //-(pow(n,11)*63/2816)
-  return a;
+  a = BigNumber("1.5707963267") - n;
+  a -= (accSpeedUp * BigNumber("0.16666666666")); //3
+  accSpeedUp *= nSquared;
+  a -= (accSpeedUp * BigNumber("0.075"));//5
+  accSpeedUp *= nSquared;
+  a -= (accSpeedUp * BigNumber("0.04464285714")); //7
+  accSpeedUp *= nSquared;
+  a -= (accSpeedUp * BigNumber("0.03038194444")); //9
+  accSpeedUp *= nSquared;
+  a -= (accSpeedUp * BigNumber("0.02237215909")); //11
+  accSpeedUp *= nSquared;
+  a -= (accSpeedUp * BigNumber("0.01735276442")); //13
+  accSpeedUp *= nSquared;
+  a -= (accSpeedUp * BigNumber("0.01396484375")); //15
+  accSpeedUp *= nSquared;
+  a -= (accSpeedUp * BigNumber("0.0115518009")); //17
+  accSpeedUp *= nSquared;
+  a -= (accSpeedUp * BigNumber("0.009761609529194078")); //19
+  accSpeedUp *= nSquared;
+  a -= (accSpeedUp * BigNumber("0.008390335809616815")); //21
+  return a; //* BigNumber("57.2957795131");
+}
+
+bool isNearZero(BigNumber v) {
+  return (v < BigNumber("0.00001") && v > BigNumber("-0.00001"));
 }
 
 void genOrbitalElements(vec3 posECI, vec3 velECI) {
   //Generate Orbital Elements from Earth Centered Intertial Position and Velocity
   // elements[6] = [a,e,i,BigOmega,SmallOmega,nu]
+
+  //Test Paramaters from Justin
+  //init.CS.P = [6760636.6 0 0];   % Px Py Pz [m]
+  //init.CS.V = [0 6649.756 3839.2385]; % inclination angle of 30deg [m/s]
+
+  posECI = vec3(BigNumber("6760636.6"), BigNumber("0.0"), BigNumber("0.0"));
+  velECI = vec3( BigNumber("0.0"), BigNumber("6649.756"), BigNumber("3839.2385"));
+
+  posECI.print();
+  velECI.print();
+  //velECI = vec3(0.0, 7549.756, 3839.2385);
   BigNumber ZERO = BigNumber(0); //Zero for Comparisons
+
   //Calc Angular Momentum: h
-  vec3 h = vec3();
-  posECI.cross(velECI, h);
+  vec3 h;
+  h = posECI.cross(velECI);
 
   //Calc Node Vector: nhat
-  vec3 n = vec3();
+  vec3 n;
   vec3 khat = vec3(0, 0, 1);
-  khat.cross(h, n);
+  n = khat.cross(h);
 
   //Calculate Eccentricity: e
   //62,564,815.8531 = mu/r
-  BigNumber mu_r = BigNumber("62564815.8531");
   BigNumber mu = BigNumber("398600441800000");
-  vec3 v1 = vec3();
-  vec3 v2 = vec3();
-  posECI.copyVec3(v1);
-  velECI.copyVec3(v2);
-  v1.scale(pow(velECI.magnitude(), 2) - mu_r);
+  BigNumber mu_r = (mu / posECI.magnitude());
+  vec3 v1;
+  vec3 v2;
+  v1 = posECI.copyVec3();
+  v2 = velECI.copyVec3();
+  v1.scale((velECI.magnitude()*velECI.magnitude()) - mu_r);
   v2.scale(posECI.dot(velECI));
-  vec3 evec = vec3();
-  v1.subtract(v2, evec);
-  evec.scale(1 / mu);
-  MSH.Eccentricity = evec.magnitude(); //Store e
+  vec3 evec;
+  evec = v1.subtract(v2);
+  //Serial.println("Evec:");
+  //evec.print();
+  evec.x = evec.x / mu;
+  evec.y = evec.y / mu;
+  evec.z = evec.z / mu;
+  BigNumber e;
+  e = evec.magnitude();
+  memcpy(Eccentricity, &e, sizeof(e));
 
   //Specific Mechanical Energy: E
   //Semimajor Axis: a
   //Semi-latus Rectum: p
-  BigNumber mechEnergy = (velECI.dot(velECI) * BigNumber(0.5)) - mu_r;
-  MSH.SemiMajorAxis = BigNumber(ZERO); //0 is inf for parabolic orbit //TODO test
-  BigNumber p = BigNumber(ZERO); //0 is temp
-  if ((MSH.Eccentricity - BigNumber(1)) < BigNumber("0.00000001")) {
+  BigNumber mechEnergy = (velECI.dot(velECI) * BigNumber("0.5")) - mu_r;
+  //BigNumber p = BigNumber(ZERO); //0 is temp
+  BigNumber SA;
+  BigNumber eccErr = *Eccentricity - BigNumber("1");
+  if (isNearZero(eccErr)) {
     //Parabolic Orbit
-    //MSH.SemiMajorAxis = inf
-    p = h.dot(h) / mu;
+    memcpy(SemiMajorAxis, &ZERO, sizeof(ZERO));
+    //p = h.dot(h) / mu;
   } else {
-    MSH.SemiMajorAxis = -1.0 * mu / (2.0 * mechEnergy);
-    p = MSH.SemiMajorAxis * (BigNumber(1.0) - BigNumber(pow(MSH.Eccentricity, 2)));
+    SA = BigNumber(BigNumber("-1.0") * mu / (BigNumber("2.0") * mechEnergy));
+    memcpy(SemiMajorAxis, &SA, sizeof(SA));
+    //p = (*SemiMajorAxis) * (BigNumber(1.0) - BigNumber(pow(*Eccentricity, 2)));
   }
 
   //Inclination: i
-  MSH.Inclination = inverseCosTS(h.z / h.magnitude());
+  //Serial.print("h: ");
+  //h.print();
+  //Serial.print(h.z / h.magnitude());
+  BigNumber R = h.z / h.magnitude();
+  //Serial.print("R: ");
+  //Serial.print(R);
+  BigNumber i = inverseCosTS(R) * BigNumber("57.2957795131");
+  memcpy(Inclination, &i, sizeof(i));
+
 
   //Longitude of Ascending Node: Omega
-  if (MSH.Inclination != ZERO || n.magnitude() != ZERO) {
-    MSH.Omega = inverseCosTS(n.x / n.magnitude());
+  BigNumber Om;
+  if (*Inclination != ZERO || n.magnitude() != ZERO) {
+    Om = inverseCosTS(n.x / n.magnitude());
     if (n.y < 0) {
-      MSH.Omega = 2 * 3.1415926535 - MSH.Omega;
+      Om = 2 * 3.1415926535 - Om;
     }
   } else {
-    MSH.Omega = BigNumber(0); //Ascending Node Undefined for equatorial orbits
+    Om = BigNumber(0); //Ascending Node Undefined for equatorial orbits
   }
+  Om = Om * BigNumber("57.2957795131");
+  memcpy(Omega, &Om, sizeof(Om));
 
   //Argument of Periapsis: argp
-  if (MSH.Eccentricity != ZERO || n.magnitude() != ZERO) {
-    MSH.ArgPeri = inverseCosTS(n.dot(evec) / (n.magnitude() * MSH.Eccentricity));
+  BigNumber AP;
+  BigNumber x = n.magnitude() * (*Eccentricity);
+  if (!isNearZero(x)) {
+    Serial.print((n.magnitude() * (*Eccentricity)));
+    AP = inverseCosTS(n.dot(evec) / x);
     if (evec.z < 0) {
-      MSH.ArgPeri = 2 * 3.1415926535 - MSH.ArgPeri;
+      AP = 2 * 3.1415926535 - AP;
     }
   } else {
-    MSH.ArgPeri = BigNumber(0);
+    AP = BigNumber(0);
   }
+  AP *= BigNumber("57.2957795131");
+  memcpy(ArgPeri, &AP, sizeof(AP));
 
   //True Anomaly: nu
-  if (MSH.Eccentricity != ZERO) {
-  MSH.TrueAnomaly = inverseCosTS(evec.dot(posECI) / (MSH.Eccentricity * posECI.magnitude()));
+  BigNumber TA;
+  if (!isNearZero(*Eccentricity)) {
+    TA = inverseCosTS(evec.dot(posECI) / (*Eccentricity * posECI.magnitude()));
     if (posECI.dot(velECI) < 0) {
-      MSH.TrueAnomaly = 2 * 3.1415926535 - MSH.TrueAnomaly;
+      TA = 2 * 3.1415926535 - TA;
     }
   } else {
-    MSH.TrueAnomaly = 0; //True Anomaly Undefined for perfectly circular orbits
+    TA = BigNumber(0); //True Anomaly Undefined for perfectly circular orbits
   }
+  memcpy(TrueAnomaly, &TA, sizeof(TA));
+
+  //Mean Anomaly: M
+
+  MSH.printOrbit();
 }
 
 
@@ -1578,111 +1681,139 @@ void * GNC_calcNextFiring() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////Setup and Main Loop////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void Stall() {
-  stall = true;
-  long start = millis();
-#ifdef USBCONNECT
-  Serial.println("Stall Delay");
-#endif
-  while (millis() - start < 3000) { //(stall) {
-    delay(80);
-#ifdef USBCONNECT
-    Serial.print(".");
-#endif
-  }
-
-}
+//
+//void Stall() {
+//  stall = true;
+//  long start = millis();
+//#ifdef USBCONNECT
+//  Serial.println("Stall Delay");
+//#endif
+//  while (millis() - start < 3000) { //(stall) {
+//    delay(80);
+//#ifdef USBCONNECT
+//    Serial.print(".");
+//#endif
+//  }
+//
+//}
 
 //// Main Loop
 
 void setup() {
-
   //Start Connections and Create MSH
-#ifdef USBCONNECT
+  //#ifdef USBCONNECT
+  pinMode(13, OUTPUT);
+  digitalWrite(13, HIGH);
   Serial.begin(9600);
-#endif
+  Serial.println("SYSTEM START");
 
-  //Command and Data Handling Initialization
-  Wire.begin(); //Start i2c as master
-  MSH = masterStatus(); //Create Master Status Object
-  cBuf = commandBuffer(); //Create Command Buffer
+  Serial.print("  Arbitrary Precision Library Start: ");
   BigNumber::begin(); //Start Arbitrary Precision Library
   BigNumber::setScale(10); //Set Precision to 10 Decimal Points //TODO Verify size/memory validity
 
+  Serial.println("  SUCCESS");
+  //Command and Data Handling Initialization
+  Serial.print("  Start I2C Communication:             ");
+  Wire.begin(); //Start i2c as master
+  Serial.println("SUCCESS");
+
+  //High Level Objects
+  Serial.print(F("  Initializing MSH and Command Buffer: "));
+  MSH = masterStatus(); //Create Master Status Object
+  cBuf = commandBuffer(); //Create Command Buffer
+  Serial.println(F("SUCCESS"));
+
   //Set Pinout Registers
+  Serial.print(F("  Setting Pinouts:                     "));
   initalizePinOut();
+  Serial.println(F("SUCCESS"));
 
   //Start IMU/Mag/Gyro
 #ifdef USBCONNECT
-  Serial.println(F("\nStarting IMU"));
+  Serial.print(F("  Starting IMU and Magnetometer:       "));
 #endif
-  bool imuI = IMUInit(); //TODO Check? Loop?
+  bool imuI = false;//IMUInit(); //TODO Check? Loop?
   if (!imuI) {
     //TODO Raise IMU Fail Flag
 #ifdef USBCONNECT
-    Serial.println(F("\nIMU FAILED TO INIT"));
+    Serial.println(F("FAIL"));
+#endif
+  } else {
+#ifdef USBCONNECT
+    Serial.println(F("SUCCESS"));
 #endif
   }
 
   //Start Piksi GPS
+  Serial.print(F("  Starting PIKSI GPS:                  "));
+  Serial.println(F("FAIL"));
 
   //Start Quake Radio
-
+  Serial.print(F("  Starting QUAKE Radio:                "));
+  Serial.println(F("FAIL"));
 
   //int endT = millis() + manualTimeout;
   MSH.State = NORMAL_OPS;
   MSH.NextState = NORMAL_OPS;
-}
+  Serial.println(F("Initialization Completed\n"));
 
+  SemiMajorAxis = (BigNumber*)malloc(sizeof(BigNumber));
+  Eccentricity = (BigNumber*)malloc(sizeof(BigNumber));
+  Inclination = (BigNumber*)malloc(sizeof(BigNumber));
+  Omega = (BigNumber*)malloc(sizeof(BigNumber));
+  ArgPeri = (BigNumber*)malloc(sizeof(BigNumber));
+  TrueAnomaly = (BigNumber*)malloc(sizeof(BigNumber));
+
+}
+//
 void modeControl() {
   switch (MSH.State) {
     case (NORMAL_OPS): {
-
-        //Battery Voltage Check
-        if (millis() - LastBattCheck > BattCheckTime) {
-          if (MSH.Battery <= LV_Threshold) {
-            //TODO set threshold and response. ADCS Off -> Recharge -> Desat?
-            MSH.SafeHoldFlag = LOWVOLTAGE;
-            MSH.NextState = SAFE_HOLD; //TODO
-            lowPowerEntry = millis();
-          }
-          LastBattCheck = millis();
-        }
-
-
-        //Spin Check
-        if (millis() - LastSpinCheckT > SpinCheckTime) {
-          float spinMag = pow((pow(MSH.Gyro[0], 2) + pow(MSH.Gyro[1], 2) + pow(MSH.Gyro[2], 2)), 0.5);
-          if (spinMag > OmegaThreshold) {
-            //Overspin Detected
-
-            //TODO set threshold and response. Desat+Detumble?
-            MSH.SafeHoldFlag = OVERSPIN;
-            MSH.NextState = SAFE_HOLD;
-          }
-          LastSpinCheckT = millis();
-        }
-
-        //Thermal Over/Underheat Detection
-        if (millis() - LastThermalCheck > ThermalCheck) {
-          float T_avg = 0; //TODO Max? Min? Avg?
-          for (int i = 0; i < 4; i++) {
-            T_avg += MSH.Temp[i];
-          }
-          T_avg = T_avg / 4.0;
-
-          if (T_avg > OverheatTemp) {
-            //TODO set threshold and response. ADCS Off -> Wait?
-            MSH.SafeHoldFlag = OVERHEAT;
-            MSH.NextState = SAFE_HOLD; //TODO
-          } else if (T_avg < UnderheatTemp) {
-            //TODO set threshold and response. ADCS Spin Up?/Change Attitude? -> Wait?
-            MSH.SafeHoldFlag = UNDERHEAT;
-            MSH.NextState = SAFE_HOLD;
-          }
-          LastThermalCheck = millis();
-        }
+        //
+        //        //Battery Voltage Check
+        //        if (millis() - LastBattCheck > BattCheckTime) {
+        //          if (MSH.Battery <= LV_Threshold) {
+        //            //TODO set threshold and response. ADCS Off -> Recharge -> Desat?
+        //            MSH.SafeHoldFlag = LOWVOLTAGE;
+        //            MSH.NextState = SAFE_HOLD; //TODO
+        //            lowPowerEntry = millis();
+        //          }
+        //          LastBattCheck = millis();
+        //        }
+        //
+        //
+        //        //Spin Check
+        //        if (millis() - LastSpinCheckT > SpinCheckTime) {
+        //          float spinMag = pow((pow(MSH.Gyro[0], 2) + pow(MSH.Gyro[1], 2) + pow(MSH.Gyro[2], 2)), 0.5);
+        //          if (spinMag > OmegaThreshold) {
+        //            //Overspin Detected
+        //
+        //            //TODO set threshold and response. Desat+Detumble?
+        //            MSH.SafeHoldFlag = OVERSPIN;
+        //            MSH.NextState = SAFE_HOLD;
+        //          }
+        //          LastSpinCheckT = millis();
+        //        }
+        //
+        //        //Thermal Over/Underheat Detection
+        //        if (millis() - LastThermalCheck > ThermalCheck) {
+        //          float T_avg = 0; //TODO Max? Min? Avg?
+        //          for (int i = 0; i < 4; i++) {
+        //            T_avg += MSH.Temp[i];
+        //          }
+        //          T_avg = T_avg / 4.0;
+        //
+        //          if (T_avg > OverheatTemp) {
+        //            //TODO set threshold and response. ADCS Off -> Wait?
+        //            MSH.SafeHoldFlag = OVERHEAT;
+        //            MSH.NextState = SAFE_HOLD; //TODO
+        //          } else if (T_avg < UnderheatTemp) {
+        //            //TODO set threshold and response. ADCS Spin Up?/Change Attitude? -> Wait?
+        //            MSH.SafeHoldFlag = UNDERHEAT;
+        //            MSH.NextState = SAFE_HOLD;
+        //          }
+        //          LastThermalCheck = millis();
+        //        }
 
         //Eclipse Check
         //Fault Detection
@@ -1691,26 +1822,35 @@ void modeControl() {
   }
 
   //Change State
-  MSH.State = MSH.NextState;
+  //MSH.State = MSH.NextState;
+  MSH.State = NORMAL_OPS;
 }
 
 void loop() {
+  digitalWrite(13, HIGH);
+  digitalWrite(13, LOW);
+
+  //Serial.print("q");
+
+
 #ifdef USBCONNECT
   readSerialAdd2Buffer(); //Testing Command Input
 #endif
-
+  //Serial.println("Here");
   //Mode Controller
   //  Determined MSH.
 
   //Process Next Scheduled Event if it Starts in less than 1s //TODO make Variable Prep Time?
-  if (MSH.Sch.getNextEventTime() - millis() <= 1000) { //
+  long nextETime = MSH.Sch.getNextEventTime();
+  if (nextETime > 0 and nextETime - millis() <= 1000) { //Event Processing Occurs 1s before deadline time
     Event *e = (Event *)MSH.Sch.getNextEvent();
 
     switch (e->id) {
       case (0): //Void Event
 #ifdef USBCONNECT
-        Serial.print(F("Void Event Processed at T = "));
-        Serial.println(millis());
+        Serial.print(F("<VE:"));
+        Serial.print(millis() / (1000.0));
+        Serial.print(":" + String((nextETime - millis()) / 1000.0) + ">");
 #endif
         break;
 
@@ -1728,80 +1868,82 @@ void loop() {
         break;
     }
 
-    MSH.Sch.popEvent();
+    MSH.Sch.popEvent(); //Removes Event From Queue
 
   }
 
   //WatchDog Timer
-  kickGS(); //Reset Timer so GS doesn't reboot
+  //kickGS(); //Reset Timer so GS doesn't reboot
 
   switch (MSH.State) {
     case (NORMAL_OPS): {
 
         //Collect Sensor Data
-        SensorDataCollect();
+        //SensorDataCollect();
 
         //GNC Calculation
-        if (millis() - lastGNCime >= 30000) { //GNCMinTime) { //30s for testing
-          if (MSH.PressCurrent > PresThreshold) { //Dont Calculate unless Tank is Ready to Fire
-            Event * e = (Event *)GNC_calcNextFiring();
-            MSH.Sch.addEvent(e);
-#ifdef USBCONNECT
-            Serial.print("<GNC>");
-#endif
-          } else {
-
-          }
-          lastGNCime = millis();
-        }
+        //        if (millis() - lastGNCime >= 30000) { //GNCMinTime) { //30s for testing
+        //          if (MSH.PressCurrent > PresThreshold) { //Dont Calculate unless Tank is Ready to Fire
+        //            Event * e = (Event *)GNC_calcNextFiring();
+        //            MSH.Sch.addEvent(e);
+        //#ifdef USBCONNECT
+        //            Serial.print("<GNC>");
+        //#endif
+        //          } else {
+        //
+        //          }
+        //          lastGNCime = millis();
+        //        }
 
         //Propulsion Preperation
-        if (millis() - lastPressTime >= presCheckTime) {
-          if (MSH.PressCurrent > PresThreshold) {
-            pressurizeTank2(); //Cycle valves to Pressurize gaseous prop tank 2
-          }
-        }
+        //        if (millis() - lastPressTime >= presCheckTime) {
+        //          if (MSH.PressCurrent > PresThreshold) {
+        //            pressurizeTank2(); //Cycle valves to Pressurize gaseous prop tank 2
+        //          }
+        //        }
 
         //ADCS Calculation
 
         //Downlinks
-        if (millis() - lastDLTime >= DLTime || commandedDL) {
-          if (testRDL || commandedDL) {
-
-            //TODO DownLinks
-
-          }
-          lastDLTime = millis();
-          if (commandedDL) {
-            commandedDL = false;
-          }
-        }
+        //        if (millis() - lastDLTime >= DLTime || commandedDL) {
+        //          if (testRDL || commandedDL) {
+        //
+        //            //TODO DownLinks
+        //
+        //          }
+        //          lastDLTime = millis();
+        //          if (commandedDL) {
+        //            commandedDL = false;
+        //          }
+        //        }
 
         //Test ADCS Communication
-        if (true) { //MSH.hardwareAvTable[10]) {
-          //unsigned long t = millis();
-          if (millis() - lastADCSComAttempt >= ADCSComTime) {
-            lastADCSComAttempt = millis();
-#ifdef USBCONNECT
-            Serial.print("<IMU>");
-#endif
-            sendIMUToADCS();
-            bool ADCSResponse = requestFromADCS();
-            if (ADCSResponse) {
-              lastADCSComTime = millis(); //Reset Timeout if Com is successful
-            } else {
-#ifdef USBCONNECT
-              Serial.print(F("No Reply From ADCS for "));
-              Serial.print((millis() - lastADCSComTime) / 1000.0);
-              Serial.println(F(" seconds"));
-#endif
-            }
-          }
-        }
+        //        if (true) { //MSH.hardwareAvTable[10]) {
+        //          //unsigned long t = millis();
+        //          if (millis() - lastADCSComAttempt >= ADCSComTime) {
+        //            lastADCSComAttempt = millis();
+        //#ifdef USBCONNECT
+        //            Serial.print("<IMU>");
+        //#endif
+        //            sendIMUToADCS();
+        //            bool ADCSResponse = requestFromADCS();
+        //            if (ADCSResponse) {
+        //              lastADCSComTime = millis(); //Reset Timeout if Com is successful
+        //            } else {
+        //#ifdef USBCONNECT
+        //              Serial.print(F("No Reply From ADCS for "));
+        //              Serial.print((millis() - lastADCSComTime) / 1000.0);
+        //              Serial.println(F(" seconds"));
+        //#endif
+        //            }
+        //          }
+        //        }
 
         //IMU Testing Display
-#ifdef USBCONNECT
+        //#ifdef USBCONNECT
+        //Serial.print(millis() - LastSpinCheckT);
         if (millis() - LastSpinCheckT > SpinCheckTime) {
+#ifdef USBCONNECT
           Serial.print(("<G:") + String(MSH.Gyro[0], 2) + "|" +
                        String(MSH.Gyro[1], 2) + "|" +
                        String(MSH.Gyro[2], 2) + ">");
@@ -1811,14 +1953,18 @@ void loop() {
           Serial.print(("<AC:") + String(MSH.Accel[0], 2) + "|" +
                        String(MSH.Accel[1], 2) + "|" +
                        String(MSH.Accel[2], 2) + ">");
-        }
 #endif
+          LastSpinCheckT = millis();
+        }
+        //#endif
 
 #ifdef USBCONNECT
         //Battery Power Display
+        //Serial.print(millis() - LastBattCheck);
         if (millis() - LastBattCheck > BattCheckTime) {
           //TODO GomSpace Packet Fetch in Update Sensors
           Serial.print("<B:" + String(MSH.Battery) + ">");
+          LastBattCheck = millis();
         }
 #endif
 
@@ -1830,59 +1976,66 @@ void loop() {
             T_avg += MSH.Temp[i];
           }
           T_avg = T_avg / 4.0;
-
+          LastThermalCheck = millis();
           Serial.print("<T:" + String((float)T_avg) + ">");
         }
 #endif
         break;
       }
-    case (DORMANT_CRUISE):
-      //45 min Dormant Cruise
-      if (millis() > 45 * 60 * 1000) {
-        MSH.NextState = INITALIZATION;
-        initEntry = millis();
-      } else {
-        delay(10000);
-      }
-      break;
-
-    case (INITALIZATION): {
-        //TODO Checkout and downlink
-
-        if (millis() - initEntry > (long)2700000) { //Force to Normal Ops
-          //call downlink function
-          //TODO
-          MSH.NextState = NORMAL_OPS;
-        }
-        break;
-      }
-
-    case (ECLIPSE): {
-        MSH.NextState = NORMAL_OPS;
-        //TODO
-      }
-
-    case (SAFE_HOLD):
-      MSH.NextState = NORMAL_OPS;
-      //TODO wait for Uplink Commands
-      break;
+      //    case (DORMANT_CRUISE):
+      //      //45 min Dormant Cruise
+      //      if (millis() > 45 * 60 * 1000) {
+      //        MSH.NextState = INITALIZATION;
+      //        initEntry = millis();
+      //      } else {
+      //        delay(10000);
+      //      }
+      //      break;
+      //
+      //    case (INITALIZATION): {
+      //        //TODO Checkout and downlink
+      //
+      //        if (millis() - initEntry > (long)2700000) { //Force to Normal Ops
+      //          //call downlink function
+      //          //TODO
+      //          MSH.NextState = NORMAL_OPS;
+      //        }
+      //        break;
+      //      }
+      //
+      //    case (ECLIPSE): {
+      //        MSH.NextState = NORMAL_OPS;
+      //        //TODO
+      //      }
+      //
+      //    case (SAFE_HOLD):
+      //      MSH.NextState = NORMAL_OPS;
+      //      //TODO wait for Uplink Commands
+      //      break;
 
   }
+
+  //Determine Next Mode
+  //modeControl();
 
   //Testing Iterators
   cycle++;
 
-  if (true && ((millis() - LastTimeTime) > TimeTime)) { //Prevent Screen Spam
+  if (((millis() - LastTimeTime) > TimeTime)) { //Prevent Screen Spam
+    //genOrbitalElements(vec3(0, 0, 0), vec3(0, 0, 0)); //Test Calculations
+    //Serial.println();
+    MSH.Sch.print();
     long t = millis();
 #ifdef USBCONNECT
-    Serial.print("[" + String((millis() - LastTimeTime) / 1000.0) + "]"); //Cycle Lag
+    Serial.print("[" + String((millis() - (long)LastTimeTime) / 1000.0) + "s]"); //Cycle Lag
     String s = ("\n[System Time: " + String(t / (long)(60 * 60 * 1000)) + ":" +
                 String(t / ((long)60 * 1000) % ((long)60 * 1000)) + ":");
     if (((t / 1000) % ((long)1000) % 60) < 10) {
       s += '0';
     }
     s += (String((t / 1000) % ((long)1000) % 60) +
-          "][" + String(MSH.State) + "]");
+          "][S" + String(MSH.State) + "]");
+    s += "[SCH:" + String(MSH.Sch.getNumStored()) + "]";
     s += ("[" + String(freeRam() / 1024.0, 3) + "kB]");
     Serial.print(s);
 #endif

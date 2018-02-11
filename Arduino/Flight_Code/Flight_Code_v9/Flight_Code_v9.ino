@@ -1,10 +1,20 @@
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+  _______     _       ____  _____   ________  __    _         __       _       ______                __
+  |_   __ \   / \     |_   \|_   _| |_   __  |[  |  (_)       [  |     / |_   .' ___  |              |  ]
+  | |__) | / _ \      |   \ | |     | |_ \_| | |  __   .--./)| |--. `| |-' / .'   \_|  .--.    .--.| | .---.
+  |  ___/ / ___ \     | |\ \| |     |  _|    | | [  | / /'`\;| .-. | | |   | |       / .'`\ \/ /'`\' |/ /__\\
+  _| |_  _/ /   \ \_  _| |_\   |_   _| |_     | |  | | \ \._//| | | | | |,  \ `.___.'\| \__. || \__/  || \__.,
+  |_____||____| |____||_____|\____| |_____|   [___][___].',__`[___]|__]\__/   `.____ .' '.__.'  '.__.;__]'.__.'
+                                                     ( ( __))
+*/
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include <Wire.h>
 #include <LIS3MDL.h>
 #include <LSM6.h>
 #include <EEPROM.h>
 #include <time.h>
-#include "BigNumber.h"
+#include <math.h>
 
 #define USBCONNECT  //Inlines Ground Testing Functions. Remove Before Flight
 
@@ -44,14 +54,13 @@ unsigned long initEntry;
 unsigned long forceExitEclipseTime = 60 * 60 * 1000;
 unsigned long lastAccelTime;
 
-//Threshold Values
+//Battery Threshold Values
 float LV_Threshold = 6.6; //Volts
 float HV_Threshold = 7.0; //Volts
 int8_t LT_Threshold = -10; //C
 uint8_t HT_Threshold = 60; //C
 
 //Battery Test
-
 unsigned long LastBattCheck = 0;
 unsigned long BattCheckTime = 8000;
 unsigned long LastSolarCheck = 0;
@@ -61,7 +70,6 @@ unsigned long DLTime = (2 * 60 * 1000); //2 min
 unsigned long lastDLTime = 0;
 
 //IMU and Sensor Test
-//TODO IMU Object
 LSM6 imu;
 LIS3MDL mag;
 unsigned long SensorDwell = 10; //100; //Averaging Time Non-BLOCKING!
@@ -134,31 +142,18 @@ unsigned long FillTimeoutTime = 10000; //Time to abort Tank Filling After, Curre
 // EEPROM.put() for Structs
 // EEPROM.length()
 
-
-//
 class vec3
 {
+    //Class to Hold Vectors for Orbital Pos/Vel and Other vector values
   public:
-    BigNumber x;
-    BigNumber y;
-    BigNumber z;
+    double x;
+    double y;
+    double z;
 
-    vec3(float a = 0, float b = 0, float c = 0) {
-      x = BigNumber(a);
-      y = BigNumber(b);
-      z = BigNumber(c);
-    }
-
-    vec3(BigNumber a, BigNumber b, BigNumber c) {
-      x = a;
-      y = b;
-      z = c;
-    }
-
-    ~vec3() {
-      x.~BigNumber();
-      y.~BigNumber();
-      z.~BigNumber();
+    vec3(double a = 0, double b = 0, double c = 0) {
+      x = (a);
+      y = (b);
+      z = (c);
     }
 
     void print() {
@@ -169,23 +164,23 @@ class vec3
 #endif
     }
 
-    BigNumber dot(vec3 a) {
+    double dot(vec3 a) {
       return a.x * x + a.y * y + a.z * z;
     }
 
-    BigNumber magnitude() {
+    double magnitude() {
       //Serial.print("mag: ");
       //Serial.println((x * x + y * y + z * z).sqrt());
-      return (x * x + y * y + z * z).sqrt();
+      return pow(x * x + y * y + z * z, 0.5);
     }
 
     vec3 cross(vec3 v) { //, vec3 res) {
-      return (vec3(BigNumber((y * v.z) - (v.y * z)),
-                   BigNumber((v.x * z) - (x * v.z)),
-                   BigNumber((x * v.y) - (v.x * y))));
+      return (vec3(((y * v.z) - (v.y * z)),
+                   ((v.x * z) - (x * v.z)),
+                   ((x * v.y) - (v.x * y))));
     }
 
-    void scale(BigNumber a) {
+    void scale(double a) {
       x *= a;
       y *= a;
       z *= a;
@@ -200,23 +195,8 @@ class vec3
     }
 };
 
-//float dot(vec3 a, vec3 b) {
-//  //u dot v
-//  return (a.x * b.x + a.y * b.y + a.z * b.z);
-//}
-//
-//void cross(vec3 u, vec3 v, vec3 res) {
-//  //u cross v = res
-//  res.x = (u.y * v.z - (v.y * u.z));
-//  res.y = (v.x * u.z - (u.x * v.z));
-//  res.z = (u.x * v.y - (v.x * u.y));
-//}
-//
-//float magnitude(vec3 u) {
-//  return pow(pow(u.x, 2) + pow(u.y, 2) + pow(u.z, 2), 0.5);
-//}
-
 void print_binary(int v, int num_places) {
+  //Display Number as Binary String
 #ifdef USBCONNECT
   int mask = 0, n;
   for (n = 1; n <= num_places; n++) {
@@ -250,6 +230,7 @@ float fmap(float x, float in_min, float in_max, float out_min, float out_max)
 }
 
 struct Event {
+  //Data Type to Hold Planned Actions in the Future
   int id; //0 Void, 1 Thurster Firing, 2 Detumble, 3 Attitude Change etc
   long sTime; //Time Event Starts
   int * eventData; //Formate TDB
@@ -260,6 +241,7 @@ struct Event {
 };
 
 class Scheduler {
+    //Manages and Organizes Events
   private:
     Event * Events[20] = {0}; //20 Events max in pipeline
     int Stored;
@@ -299,12 +281,22 @@ class Scheduler {
         return false;
       } else {
         int ind = 0;
+        //Serial.println("\n Storing: " + String(e->sTime));
+        //Serial.println("Stored: " + String(Stored));
+        bool found = false;
         for (int i = 0; i < Stored; i++) {
-          if (e->sTime < Events[i]->sTime) {
-            ind = i;
+          //Serial.println("Here " + String(Events[i]->sTime));
+          ind = i;
+          if ((e->sTime) <= (Events[i]->sTime)) {
+            //Serial.println("Spot Found");
+            found = true;
             break;
           }
         }
+        if (!found) {
+          ind = Stored; //New Value Goes at the end
+        }
+        //Serial.println("\nInsertion Index is " + String(ind));
         return insert(e, ind);
       }
     }
@@ -313,11 +305,12 @@ class Scheduler {
       if (Stored > 0) {
         return Events[0]->sTime;
       } else {
-        return -1;
+        return 0;
       }
     }
 
     void * getNextEvent() {
+      //CANNOT Call if Stored == 0, //TODO
       return Events[0];
     }
 
@@ -347,7 +340,7 @@ class Scheduler {
         Serial.println("\nScheduler: " + String(Stored) + " Events Stored");
         for (int i = 0; i < Stored; i++) {
           int mins = Events[i]->sTime / 60000;
-          int secs = (Events[i]->sTime / 1000.0) - mins * 60;
+          float secs = (Events[i]->sTime / 1000.0) - mins * 60;
           Serial.println("  " + String(Events[i]->id) + ":" + String(mins) + ":" + String(secs));
         }
       }
@@ -408,12 +401,12 @@ class GPSData {
     }
 };
 
-BigNumber * SemiMajorAxis;
-BigNumber * Eccentricity;
-BigNumber * Inclination;
-BigNumber * Omega;
-BigNumber * ArgPeri;
-BigNumber * TrueAnomaly;
+double  SemiMajorAxis;
+double  Eccentricity;
+double  Inclination;
+double  Omega;
+double  ArgPeri;
+double  TrueAnomaly;
 
 class masterStatus {
     //Class to hold entire State of Spacecraft Operation except timers
@@ -432,6 +425,7 @@ class masterStatus {
     int NextState;
 
     //IMU Data Variables
+    bool IMU_INIT;
     float Mag[3] = {0}; // max 0.65 gauss min -0.65 gauss
     float Gyro[3] = {0};  // max 245 dps min -245 dps
     float Accel[3] = {0}; //?
@@ -485,6 +479,7 @@ class masterStatus {
     int Thrust2Fire; //T2 firing counter
     int Thrust3Fire; //T3 firing counter
     int Thrust4Fire; //T4 firing counter
+    bool FireOverride; //Permit Firing if underpressure/sensor broken
 
     float PressCurrent;
     float PresBeforeFire; //Tank Psi Before fire
@@ -572,13 +567,13 @@ class masterStatus {
 
       Sch = Scheduler();
 
-      //bool hardwareAvTable[10] = {true}; // Hardware Avaliability Table
-      //TODO
+      //Hardware Availability Flags
 
       //Entering Safe Hold Flag
       SafeHoldFlag = 0;
 
       //IMU
+      IMU_INIT = false;
 
       //Sensor Initial Values
       Battery = 3.8;
@@ -588,12 +583,6 @@ class masterStatus {
       TorqY_PWM = 0;
       TorqZ_PWM = 0;
 
-      //      SemiMajorAxis = BigNumber(0);
-      //      Eccentricity = BigNumber(0);
-      //      Inclination = BigNumber(0);
-      //      Omega = BigNumber(0);
-      //      ArgPeri = BigNumber(0);
-      //      TrueAnomaly = BigNumber(0);
     }
 
 
@@ -606,17 +595,17 @@ class masterStatus {
     void printOrbit() {
       Serial.println("\nOrbital Parameters: ");
       Serial.print("  Semimajor Axis: ");
-      Serial.println(*SemiMajorAxis);
+      Serial.println(SemiMajorAxis);
       Serial.print("  Eccentricity: ");
-      Serial.println(*Eccentricity);
+      Serial.println(Eccentricity);
       Serial.print("  Inclination: ");
-      Serial.println((*Inclination));
+      Serial.println(Inclination);
       Serial.print("  Omega: ");
-      Serial.println((*Omega));
+      Serial.println(Omega);
       Serial.print("  ArgPeri: ");
-      Serial.println(*ArgPeri);
+      Serial.println(ArgPeri);
       Serial.print("  TrueAnomaly: ");
-      Serial.println(*TrueAnomaly);
+      Serial.println(TrueAnomaly);
 
     }
 
@@ -640,8 +629,10 @@ masterStatus MSH; //Declare MSH
 //IMU Code
 void getIMUData() {
   //Fetches IMU and Mag Data for Time averaging to reduce noise
-  mag.read();
-  imu.read();
+  if (MSH.IMU_INIT) {
+    mag.read();
+    imu.read();
+  }
   MSH.MagAcc[0] += mag.m.x; MSH.MagAcc[1] += mag.m.y; MSH.MagAcc[2] += mag.m.z;
   MSH.GyroAcc[0] += imu.g.x; MSH.GyroAcc[1] += imu.g.y; MSH.GyroAcc[2] += imu.g.z;
   MSH.AccelAcc[0] += imu.a.x; MSH.AccelAcc[1] += imu.a.y; MSH.AccelAcc[2] += imu.a.z;
@@ -675,7 +666,6 @@ void SensorDataCollect(int type = 0) {
   getTempSensors();
   DataRecords++;
   //TODO Measure Tank2 Pressure
-  //TODO Measure Temps
   if (millis() - lastSensorTime > SensorDwell) { //SensorDwell ~10ms
     //Add Any Averaging Data
 
@@ -734,32 +724,6 @@ class commandBuffer {
 };
 commandBuffer cBuf;
 
-//Helper Functions
-
-void initalizePinOut() {
-  //Setup Master Pinout
-  pinMode(ADCSReset, OUTPUT);
-  pinMode(DockingForward, OUTPUT);
-  pinMode(DockingBackward, OUTPUT);
-  pinMode(DockingEnable, OUTPUT);
-  pinMode(TempMux1, OUTPUT);
-  pinMode(TempMux2, OUTPUT);
-  pinMode(Valve1, OUTPUT);
-  pinMode(Valve2, OUTPUT);
-  pinMode(Valve3, OUTPUT); //LED!!!
-  pinMode(Valve4, OUTPUT);
-  pinMode(PressSens, INPUT);
-  pinMode(TempMuxRead, INPUT);
-  pinMode(Valve5, OUTPUT);
-}
-
-extern "C" char *sbrk(int i);
-int freeRam () {
-  //Determine Remaining RAM on Master
-  char stack_dummy = 0;
-  return &stack_dummy - sbrk(0);
-}
-
 volatile bool stall = true;
 void waitForInterrupt() {
   stall = false;
@@ -779,22 +743,19 @@ String chop(float num, int p) {
   return s.substring(0, s.indexOf('.') + p + 1);
 }
 
-
-////Parser Functions
-
 void buildBuffer(String com) {
   //Check if incoming String <com> is valid set of commands and add it to the CommandBuffer
   int commandData;
   int commandType;
   String comRemaining = com;
-  bool l = true;
-  while (l) {
+  bool go = true;
+  while (go) {
     commandType = (com.substring(0, com.indexOf(","))).toInt();
     commandData = (com.substring(com.indexOf(",") + 1, com.indexOf("!"))).toInt();
     cBuf.commandStack[cBuf.openSpot][0] = commandType;
     cBuf.commandStack[cBuf.openSpot][1] = commandData;
     if (com.indexOf("!") == (int)(com.length() - 1)) {
-      l = false;
+      go = false;
       //Serial.println(F("Finished Adding Commands"));
     } else {
       com = com.substring(com.indexOf("!") + 1);
@@ -904,6 +865,9 @@ boolean isInputValid(String input) {
   return valid;
 }
 
+#ifdef USBCONNECT
+void * p; //Testing pointer for Memory leaks. Ensure not included on flight version
+#endif
 void popCommands() {
   //Process all the Incoming Commands
   long start = millis();
@@ -1012,12 +976,27 @@ void popCommands() {
             MSH.Sch.addEvent(e);
             break;
           }
+        case (101):
+          MSH.Sch.clearEvents();
+          break;
+        case (102):
+#ifdef USBCONNECT
+          //Test memory leak
+          if (currentCommand[1] == 0) {
+            free(p);
+            break;
+          } else {
+            p = malloc(1024 * currentCommand[1]);
+          }
+#endif
+          break;
       }
     } else {
       //Serial.println("No Command");
     }
   }
 }
+
 
 void readSerialAdd2Buffer() {
   //Read Testing Commands from USB Serial
@@ -1192,7 +1171,7 @@ void pressurizeTank2() {
   SensorDataCollect();
   if (MSH.PressCurrent < PresThreshold) {
     digitalWrite(Valve5, HIGH);
-    while (millis() < endT && MSH.PressCurrent < PresThreshold) {
+    while (millis() < endT && MSH.PressCurrent < PresThreshold) { //TODO set threshold
       SensorDataCollect();
     }
     digitalWrite(Valve5, LOW);
@@ -1230,6 +1209,11 @@ bool IMUInit() {
       imu.enableDefault();
       break;
     }
+  }
+  if (successMag && successImu) {
+    MSH.IMU_INIT = true;
+  } else {
+    false;
   }
   return (successMag && successImu);
 }
@@ -1490,40 +1474,43 @@ void kickGS(bool p = false) {
 ////////////GNC Calculation///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-BigNumber inverseCosTS(BigNumber n) {
-  //9 Term Taylor Expansion of Inverse Cosine in Radians
-  if (n > 1 || n < -1) {
-    //Error
-    return BigNumber(-1);
-  }
-  BigNumber accSpeedUp = n.pow(3);
-  BigNumber  nSquared = n.pow(2);
-  BigNumber a;
-  a = BigNumber("1.5707963267") - n;
-  a -= (accSpeedUp * BigNumber("0.16666666666")); //3
-  accSpeedUp *= nSquared;
-  a -= (accSpeedUp * BigNumber("0.075"));//5
-  accSpeedUp *= nSquared;
-  a -= (accSpeedUp * BigNumber("0.04464285714")); //7
-  accSpeedUp *= nSquared;
-  a -= (accSpeedUp * BigNumber("0.03038194444")); //9
-  accSpeedUp *= nSquared;
-  a -= (accSpeedUp * BigNumber("0.02237215909")); //11
-  accSpeedUp *= nSquared;
-  a -= (accSpeedUp * BigNumber("0.01735276442")); //13
-  accSpeedUp *= nSquared;
-  a -= (accSpeedUp * BigNumber("0.01396484375")); //15
-  accSpeedUp *= nSquared;
-  a -= (accSpeedUp * BigNumber("0.0115518009")); //17
-  accSpeedUp *= nSquared;
-  a -= (accSpeedUp * BigNumber("0.009761609529194078")); //19
-  accSpeedUp *= nSquared;
-  a -= (accSpeedUp * BigNumber("0.008390335809616815")); //21
-  return a; //* BigNumber("57.2957795131");
-}
+//double inverseCosTS(double n) {
+//  //9 Term Taylor Expansion of Inverse Cosine in Radians
+//
+//
+//  if (n > 1 || n < -1) {
+//    //Error
+//    return -1;
+//  }
+//  return acos(n); //DOUBLES WORK NOW ^%E(*^GUQGUT&^QTE&!!!!!!
+////  double accSpeedUp = n*n*n;
+////  double  nSquared = n*n;
+////  double a;
+////  a = (double)(1.5707963267) - n;
+////  a -= (accSpeedUp * (double)(0.16666666666)); //3
+////  accSpeedUp *= nSquared;
+////  a -= (accSpeedUp * (double)(0.075));//5
+////  accSpeedUp *= nSquared;
+////  a -= (accSpeedUp * (double)(0.04464285714)); //7
+////  accSpeedUp *= nSquared;
+////  a -= (accSpeedUp * (double)(0.03038194444)); //9
+////  accSpeedUp *= nSquared;
+////  a -= (accSpeedUp * (double)(0.02237215909)); //11
+////  accSpeedUp *= nSquared;
+////  a -= (accSpeedUp * (double)(0.01735276442)); //13
+////  accSpeedUp *= nSquared;
+////  a -= (accSpeedUp * (double)(0.01396484375)); //15
+////  accSpeedUp *= nSquared;
+////  a -= (accSpeedUp * (double)(0.0115518009)); //17
+////  accSpeedUp *= nSquared;
+////  a -= (accSpeedUp * (double)(0.009761609529194078)); //19
+////  accSpeedUp *= nSquared;
+////  a -= (accSpeedUp * (double)(0.008390335809616815)); //21
+////  return a; //* BigNumber("57.2957795131");
+//}
 
-bool isNearZero(BigNumber v) {
-  return (v < BigNumber("0.00001") && v > BigNumber("-0.00001"));
+bool isNearZero(double v) {
+  return (v < (double)(0.00001) && v > (double)(0.00001));
 }
 
 void genOrbitalElements(vec3 posECI, vec3 velECI) {
@@ -1534,13 +1521,13 @@ void genOrbitalElements(vec3 posECI, vec3 velECI) {
   //init.CS.P = [6760636.6 0 0];   % Px Py Pz [m]
   //init.CS.V = [0 6649.756 3839.2385]; % inclination angle of 30deg [m/s]
 
-  posECI = vec3(BigNumber("6760636.6"), BigNumber("0.0"), BigNumber("0.0"));
-  velECI = vec3( BigNumber("0.0"), BigNumber("6649.756"), BigNumber("3839.2385"));
+  posECI = vec3((double)(6760636.6), (double)(0.0), (double)(0.0));
+  velECI = vec3( (double)(0.0), (double)(6649.756), (double)(3839.2385));
 
   posECI.print();
   velECI.print();
   //velECI = vec3(0.0, 7549.756, 3839.2385);
-  BigNumber ZERO = BigNumber(0); //Zero for Comparisons
+  double ZERO = 0; //Zero for Comparisons
 
   //Calc Angular Momentum: h
   vec3 h;
@@ -1553,8 +1540,8 @@ void genOrbitalElements(vec3 posECI, vec3 velECI) {
 
   //Calculate Eccentricity: e
   //62,564,815.8531 = mu/r
-  BigNumber mu = BigNumber("398600441800000");
-  BigNumber mu_r = (mu / posECI.magnitude());
+  double mu = (double)398600441800000; //Todo Check
+  double mu_r = (mu / posECI.magnitude());
   vec3 v1;
   vec3 v2;
   v1 = posECI.copyVec3();
@@ -1568,24 +1555,27 @@ void genOrbitalElements(vec3 posECI, vec3 velECI) {
   evec.x = evec.x / mu;
   evec.y = evec.y / mu;
   evec.z = evec.z / mu;
-  BigNumber e;
+  double e;
   e = evec.magnitude();
-  memcpy(Eccentricity, &e, sizeof(e));
+  Eccentricity = e;
+  //memcpy(Eccentricity, &e, sizeof(e));
 
   //Specific Mechanical Energy: E
   //Semimajor Axis: a
   //Semi-latus Rectum: p
-  BigNumber mechEnergy = (velECI.dot(velECI) * BigNumber("0.5")) - mu_r;
+  double mechEnergy = (velECI.dot(velECI) * 0.5) - mu_r;
   //BigNumber p = BigNumber(ZERO); //0 is temp
-  BigNumber SA;
-  BigNumber eccErr = *Eccentricity - BigNumber("1");
+  double SA;
+  double eccErr = Eccentricity - 1;
   if (isNearZero(eccErr)) {
     //Parabolic Orbit
-    memcpy(SemiMajorAxis, &ZERO, sizeof(ZERO));
+    SemiMajorAxis = 0;
+    //memcpy(SemiMajorAxis, &ZERO, sizeof(ZERO));
     //p = h.dot(h) / mu;
   } else {
-    SA = BigNumber(BigNumber("-1.0") * mu / (BigNumber("2.0") * mechEnergy));
-    memcpy(SemiMajorAxis, &SA, sizeof(SA));
+    SA = (-1 * mu / (2 * mechEnergy));
+    SemiMajorAxis = SA;
+    //memcpy(SemiMajorAxis, &SA, sizeof(SA));
     //p = (*SemiMajorAxis) * (BigNumber(1.0) - BigNumber(pow(*Eccentricity, 2)));
   }
 
@@ -1593,52 +1583,56 @@ void genOrbitalElements(vec3 posECI, vec3 velECI) {
   //Serial.print("h: ");
   //h.print();
   //Serial.print(h.z / h.magnitude());
-  BigNumber R = h.z / h.magnitude();
+  double R = h.z / h.magnitude();
   //Serial.print("R: ");
   //Serial.print(R);
-  BigNumber i = inverseCosTS(R) * BigNumber("57.2957795131");
-  memcpy(Inclination, &i, sizeof(i));
+  double i = acos(R) * (double)(57.2957795131);
+  Inclination = i;
+  //memcpy(Inclination, &i, sizeof(i));
 
 
   //Longitude of Ascending Node: Omega
-  BigNumber Om;
-  if (*Inclination != ZERO || n.magnitude() != ZERO) {
-    Om = inverseCosTS(n.x / n.magnitude());
+  double Om;
+  if (Inclination != ZERO || n.magnitude() != ZERO) {
+    Om = acos(n.x / n.magnitude());
     if (n.y < 0) {
       Om = 2 * 3.1415926535 - Om;
     }
   } else {
-    Om = BigNumber(0); //Ascending Node Undefined for equatorial orbits
+    Om = 0; //Ascending Node Undefined for equatorial orbits
   }
-  Om = Om * BigNumber("57.2957795131");
-  memcpy(Omega, &Om, sizeof(Om));
+  Om = Om * (double)(57.2957795131);
+  Omega = Om;
+  //memcpy(Omega, &Om, sizeof(Om));
 
   //Argument of Periapsis: argp
-  BigNumber AP;
-  BigNumber x = n.magnitude() * (*Eccentricity);
+  double AP;
+  double x = n.magnitude() * (Eccentricity);
   if (!isNearZero(x)) {
-    Serial.print((n.magnitude() * (*Eccentricity)));
-    AP = inverseCosTS(n.dot(evec) / x);
+    Serial.print((n.magnitude() * (Eccentricity)));
+    AP = acos(n.dot(evec) / x);
     if (evec.z < 0) {
       AP = 2 * 3.1415926535 - AP;
     }
   } else {
-    AP = BigNumber(0);
+    AP = 0;
   }
-  AP *= BigNumber("57.2957795131");
-  memcpy(ArgPeri, &AP, sizeof(AP));
+  AP *= (double)57.2957795131;
+  ArgPeri = AP;
+  //memcpy(ArgPeri, &AP, sizeof(AP));
 
   //True Anomaly: nu
-  BigNumber TA;
-  if (!isNearZero(*Eccentricity)) {
-    TA = inverseCosTS(evec.dot(posECI) / (*Eccentricity * posECI.magnitude()));
+  double TA;
+  if (!isNearZero(Eccentricity)) {
+    TA = acos(evec.dot(posECI) / (Eccentricity * posECI.magnitude()));
     if (posECI.dot(velECI) < 0) {
       TA = 2 * 3.1415926535 - TA;
     }
   } else {
-    TA = BigNumber(0); //True Anomaly Undefined for perfectly circular orbits
+    TA = 0; //True Anomaly Undefined for perfectly circular orbits
   }
-  memcpy(TrueAnomaly, &TA, sizeof(TA));
+  TrueAnomaly = TA;
+  //memcpy(TrueAnomaly, &TA, sizeof(TA));
 
   //Mean Anomaly: M
 
@@ -1676,96 +1670,36 @@ void * GNC_calcNextFiring() {
   }
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////Setup and Main Loop////////////////////////////////////////////////////////////////////////////////////////////////
+/////Helper Functions////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//void Stall() {
-//  stall = true;
-//  long start = millis();
-//#ifdef USBCONNECT
-//  Serial.println("Stall Delay");
-//#endif
-//  while (millis() - start < 3000) { //(stall) {
-//    delay(80);
-//#ifdef USBCONNECT
-//    Serial.print(".");
-//#endif
-//  }
-//
-//}
 
-//// Main Loop
 
-void setup() {
-  //Start Connections and Create MSH
-  //#ifdef USBCONNECT
-  pinMode(13, OUTPUT);
-  digitalWrite(13, HIGH);
-  Serial.begin(9600);
-  Serial.println("SYSTEM START");
-
-  Serial.print("  Arbitrary Precision Library Start: ");
-  BigNumber::begin(); //Start Arbitrary Precision Library
-  BigNumber::setScale(10); //Set Precision to 10 Decimal Points //TODO Verify size/memory validity
-
-  Serial.println("  SUCCESS");
-  //Command and Data Handling Initialization
-  Serial.print("  Start I2C Communication:             ");
-  Wire.begin(); //Start i2c as master
-  Serial.println("SUCCESS");
-
-  //High Level Objects
-  Serial.print(F("  Initializing MSH and Command Buffer: "));
-  MSH = masterStatus(); //Create Master Status Object
-  cBuf = commandBuffer(); //Create Command Buffer
-  Serial.println(F("SUCCESS"));
-
-  //Set Pinout Registers
-  Serial.print(F("  Setting Pinouts:                     "));
-  initalizePinOut();
-  Serial.println(F("SUCCESS"));
-
-  //Start IMU/Mag/Gyro
-#ifdef USBCONNECT
-  Serial.print(F("  Starting IMU and Magnetometer:       "));
-#endif
-  bool imuI = false;//IMUInit(); //TODO Check? Loop?
-  if (!imuI) {
-    //TODO Raise IMU Fail Flag
-#ifdef USBCONNECT
-    Serial.println(F("FAIL"));
-#endif
-  } else {
-#ifdef USBCONNECT
-    Serial.println(F("SUCCESS"));
-#endif
-  }
-
-  //Start Piksi GPS
-  Serial.print(F("  Starting PIKSI GPS:                  "));
-  Serial.println(F("FAIL"));
-
-  //Start Quake Radio
-  Serial.print(F("  Starting QUAKE Radio:                "));
-  Serial.println(F("FAIL"));
-
-  //int endT = millis() + manualTimeout;
-  MSH.State = NORMAL_OPS;
-  MSH.NextState = NORMAL_OPS;
-  Serial.println(F("Initialization Completed\n"));
-
-  SemiMajorAxis = (BigNumber*)malloc(sizeof(BigNumber));
-  Eccentricity = (BigNumber*)malloc(sizeof(BigNumber));
-  Inclination = (BigNumber*)malloc(sizeof(BigNumber));
-  Omega = (BigNumber*)malloc(sizeof(BigNumber));
-  ArgPeri = (BigNumber*)malloc(sizeof(BigNumber));
-  TrueAnomaly = (BigNumber*)malloc(sizeof(BigNumber));
-
+//Helper Functions
+void initalizePinOut() {
+  //Setup Master Pinout
+  pinMode(ADCSReset, OUTPUT);
+  pinMode(DockingForward, OUTPUT);
+  pinMode(DockingBackward, OUTPUT);
+  pinMode(DockingEnable, OUTPUT);
+  pinMode(TempMux1, OUTPUT);
+  pinMode(TempMux2, OUTPUT);
+  pinMode(Valve1, OUTPUT);
+  pinMode(Valve2, OUTPUT);
+  pinMode(Valve3, OUTPUT); //LED!!!
+  pinMode(Valve4, OUTPUT);
+  pinMode(PressSens, INPUT);
+  pinMode(TempMuxRead, INPUT);
+  pinMode(Valve5, OUTPUT);
 }
-//
+
+extern "C" char *sbrk(int i);
+int freeRam () {
+  //Determine Remaining RAM on Master
+  char stack_dummy = 0;
+  return &stack_dummy - sbrk(0);
+}
+
 void modeControl() {
   switch (MSH.State) {
     case (NORMAL_OPS): {
@@ -1826,23 +1760,116 @@ void modeControl() {
   MSH.State = NORMAL_OPS;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////Setup and Main Loop////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//void Stall() {
+//  stall = true;
+//  long start = millis();
+//#ifdef USBCONNECT
+//  Serial.println("Stall Delay");
+//#endif
+//  while (millis() - start < 3000) { //(stall) {
+//    delay(80);
+//#ifdef USBCONNECT
+//    Serial.print(".");
+//#endif
+//  }
+//
+//}
+
+void setup() {
+  //Start Connections and Create MSH
+  //#ifdef USBCONNECT
+  pinMode(13, OUTPUT);
+  digitalWrite(13, HIGH);
+#ifdef USBCONNECT
+  Serial.begin(9600);
+  Serial.println("SYSTEM START");
+
+  //Command and Data Handling Initialization
+  Serial.print("  Start I2C Communication:             ");
+#endif
+  Wire.begin(); //Start i2c as master
+#ifdef USBCONNECT
+  Serial.println("SUCCESS");
+
+  //High Level Objects
+  Serial.print(F("  Initializing MSH and Command Buffer: "));
+#endif
+  MSH = masterStatus(); //Create Master Status Object
+  cBuf = commandBuffer(); //Create Command Buffer
+#ifdef USBCONNECT
+  Serial.println(F("SUCCESS"));
+
+  //Set Pinout Registers
+  Serial.print(F("  Setting Pinouts:                     "));
+#endif
+  initalizePinOut();
+#ifdef USBCONNECT
+  Serial.println(F("SUCCESS"));
+
+  //Start IMU/Mag/Gyro
+  Serial.print(F("  Starting IMU and Magnetometer:       "));
+#endif
+  bool imuI = IMUInit(); //TODO Check? Loop?
+  if (!imuI) {
+    //IMU Fail Flag raised in IMUInit
+#ifdef USBCONNECT
+    Serial.println(F("FAIL"));
+#endif
+  } else {
+#ifdef USBCONNECT
+    Serial.println(F("SUCCESS"));
+#endif
+  }
+
+  //Start Piksi GPS
+  Serial.print(F("  Starting PIKSI GPS:                  "));
+  Serial.println(F("FAIL"));
+
+  //Start Quake Radio
+  Serial.print(F("  Starting QUAKE Radio:                "));
+  Serial.println(F("FAIL"));
+
+  //int endT = millis() + manualTimeout;
+  MSH.State = NORMAL_OPS;
+  MSH.NextState = NORMAL_OPS;
+  Serial.println(F("Initialization Completed\n"));
+
+  //  SemiMajorAxis = (BigNumber*)malloc(sizeof(BigNumber));
+  //  Eccentricity = (BigNumber*)malloc(sizeof(BigNumber));
+  //  Inclination = (BigNumber*)malloc(sizeof(BigNumber));
+  //  Omega = (BigNumber*)malloc(sizeof(BigNumber));
+  //  ArgPeri = (BigNumber*)malloc(sizeof(BigNumber));
+  //  TrueAnomaly = (BigNumber*)malloc(sizeof(BigNumber));
+
+}
+
+
+//Trigger Some Test for Debugging, Prevents screen spam
+long LastTestingTime;
+
 void loop() {
   digitalWrite(13, HIGH);
   digitalWrite(13, LOW);
 
-  //Serial.print("q");
+  if (millis() - LastTestingTime >= 4000) {
+
+    LastTestingTime = millis();
+  }
 
 
 #ifdef USBCONNECT
   readSerialAdd2Buffer(); //Testing Command Input
 #endif
-  //Serial.println("Here");
-  //Mode Controller
-  //  Determined MSH.
+
 
   //Process Next Scheduled Event if it Starts in less than 1s //TODO make Variable Prep Time?
   long nextETime = MSH.Sch.getNextEventTime();
-  if (nextETime > 0 and nextETime - millis() <= 1000) { //Event Processing Occurs 1s before deadline time
+  if (nextETime > 0 && (nextETime < millis() || nextETime - millis() <= 1000)) { //Event Processing Occurs 1s before deadline time
+    //Protect against long value underflow
     Event *e = (Event *)MSH.Sch.getNextEvent();
 
     switch (e->id) {
@@ -1850,7 +1877,7 @@ void loop() {
 #ifdef USBCONNECT
         Serial.print(F("<VE:"));
         Serial.print(millis() / (1000.0));
-        Serial.print  b (":" + String((nextETime - millis()) / 1000.0) + ">");
+        Serial.print(":" + String((nextETime - millis()) / 1000.0) + ">");
 #endif
         break;
 
@@ -1875,31 +1902,36 @@ void loop() {
   //WatchDog Timer
   //kickGS(); //Reset Timer so GS doesn't reboot
 
+  //Main Mode of Operation Switch
   switch (MSH.State) {
     case (NORMAL_OPS): {
 
         //Collect Sensor Data
-        //SensorDataCollect();
+        SensorDataCollect();
 
         //GNC Calculation
-        //        if (millis() - lastGNCime >= 30000) { //GNCMinTime) { //30s for testing
-        //          if (MSH.PressCurrent > PresThreshold) { //Dont Calculate unless Tank is Ready to Fire
+        //        if (millis() - lastGNCime >= 10000) { //GNCMinTime) { //30s for testing
+        //          if (MSH.PressCurrent > PresThreshold || MSH.FireOverride) { //Dont Calculate unless Tank is Ready to Fire
+        //            //FireOverride == True Allows firing below normal pressure
         //            Event * e = (Event *)GNC_calcNextFiring();
         //            MSH.Sch.addEvent(e);
         //#ifdef USBCONNECT
         //            Serial.print("<GNC>");
         //#endif
         //          } else {
-        //
+        //            //Pressure is Insufficient for Firing so planning manuever is delayed 10s
         //          }
         //          lastGNCime = millis();
         //        }
-
-        //Propulsion Preperation
+        //
+        //        //Propulsion Preperation
         //        if (millis() - lastPressTime >= presCheckTime) {
         //          if (MSH.PressCurrent > PresThreshold) {
-        //            pressurizeTank2(); //Cycle valves to Pressurize gaseous prop tank 2
+        //            //pressurizeTank2(); //Cycle valves to Pressurize gaseous prop tank 2
         //          }
+        //#ifdef USBCONNECT
+        //          Serial.print("<P:+"+String(MSH.PressCurrent)+">");
+        //#endif
         //        }
 
         //ADCS Calculation
@@ -2022,14 +2054,13 @@ void loop() {
   cycle++;
 
   if (((millis() - LastTimeTime) > TimeTime)) { //Prevent Screen Spam
-    //genOrbitalElements(vec3(0, 0, 0), vec3(0, 0, 0)); //Test Calculations
     //Serial.println();
     MSH.Sch.print();
     long t = millis();
 #ifdef USBCONNECT
     int hours = t / (long)(60 * 60 * 1000);
     int mins = t / ((long)60 * 1000) % ((long)60 * 1000);
-    
+
     Serial.print("[" + String((millis() - (long)LastTimeTime) / 1000.0) + "s]"); //Cycle Lag
     String s = ("\n[System Time: " + String(hours) + ":" +
                 String(mins) + ":");

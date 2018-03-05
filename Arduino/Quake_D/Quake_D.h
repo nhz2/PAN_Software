@@ -2,6 +2,8 @@
 #ifndef Quake_D_hpp
 #define Quake_D_hpp
 
+#include <Wire.h>
+
 // TODO : Define error codes for end_sbdix()
 
 // TODO : Comment on general error code layout (<0 library defined >0 Quake)
@@ -77,7 +79,9 @@ public:
    *  It is recommended to wait some time before querying the result of the
    *  sbdix session (see end_sbdix()).
    */
-  void start_sbdix();
+  void start_sbdix() {
+    Serial3.print("AT+SBDIX\r");
+  }
 
   /*! Attempts to read the result of an sbdix session from the Quake. The
    *  following tasks are executed:

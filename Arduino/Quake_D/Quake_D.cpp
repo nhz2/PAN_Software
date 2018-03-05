@@ -1,5 +1,8 @@
+
+#include "Quake_D.h"
+
 // ------------------------------------
-// helper functions
+// Helper functions
 // -----------------
 
 /*! Calculates a sbdix message checksum according to the Iridium specifications.
@@ -9,7 +12,7 @@
  *    @param size size of the data array
  *    @return calculated checksum value
  */
-unsigned short checksum(unsigned const char *c, int size) {
+unsigned short calc_checksum(unsigned char const *c, int size) {
   unsigned const char *cf = c + size;
   unsigned short checksum = 0;
   while(c < cf)
@@ -33,11 +36,11 @@ void str_to_ints(unsigned char *c, int *i) { // TODO : Test this method
   }
 }
 
+// ----------------
+// End helper functions
 // ------------------------------------
 // quake class implemenation
 // ----------------
-
-#include "Quake_D.h"
 
 // TODO : As a general note, consider flushing Serial3 before some functions
 
@@ -55,70 +58,82 @@ int quake::configure() { // TODO : Disable ring alerts
   // Ensure Quake is active
   Serial3.print(F("AT\r"));
   unsigned char res[8]; res[7] = '\0';
-  int len = Serial3.readBytesUntil('\0', res, 7);
+  int len = Serial3.readBytes(res, 7);
   if(len != 7 || !String((char *)res).equals(F("\r\nOK.\r\n")))
     return 0;
   // Set responses to numeric
-  Serial3.print(F("ATV0\r"));
+  Serial3.print(F("ATV0\r")); // TODO : Ensure no response
   // Success
   return 1;
 }
 
-int write_message(unsigned char const *c, int size) {
+int quake::write_message(unsigned char const *c, unsigned short size) {
   // Alert Quake you would like to perform SBDWB
   Serial3.print(F("AT+SBDWB="));
-  Serial3.print((char)(size));
-  Serial3.print((char)(size >> 8)); // TODO : Check memory layout
+  Serial3.write((char *)&size, 2); // TODO : Check memory layout
   Serial3.write('\r');
   // Wait for the ready response from Quake
   unsigned char res[8]; res[7] = '\0';
-  int len = Serial3.readBytesUntil('\0', res, 7); res[7] = '\0';
+  int len = Serial3.readBytes(res, 7); res[7] = '\0';
   if(len != 7 || !String((char *)res).equals(F("READY\r\n")))
     return -1;
   // Write message to Quake outgoing buffer
   Serial3.write(c, size);
-  Serial3.write((char *)&checksum(c, size), 2); // TODO : Check memory layout
+  unsigned char checksum = calc_checksum(c, size);
+  Serial3.write((char *)&checksum, 2); // TODO : Check memory layout
   // Wait for Quake response
-  len = Serial3.readBytesUntil('\r', res, 2);
+  len = Serial3.readBytes(res, 2);
   if(len != 2)
     return -1;
   *res -= '0';
   // Handle fringe case of "1OK" resoonse
   if(*res == 1)
-    Serial3.readBytesUntil('\r', res, 3); // TODO : Look into actual response
+    Serial3.readBytes(res, 2); // TODO : Look into actual response
   // Return response code
   return *res;
 }
 
-int end_sbdix() {
+int quake::end_sbdix() {
   // Check to see if Quake response has been recieved
-  if(Serial3.avaliable())
+  if(Serial3.available())
     return -1;
   // Load Quake response to memory
-  unsigned char res[100]; // TODO : Adjust to Serial3 buffer Size
-  int len = Serial3.readBytesUntil('\r', res, 100); // TODO : Serial3 buffer
+  unsigned char res[64]; // TODO : Adjust to Serial3 buffer Size
+  int len = Serial3.readBytes(res, 64); // TODO : Serial3 buffer size
   if(len < 19) // TODO : Add error code to description
     return -2;
   // Parse Quake response codes
   int res_code[6];
-  str_to_ints(res + 7; res_code); // + 7 skips "SBDIX:" prefix
+  str_to_ints(res + 7, res_code); // + 7 skips "SBDIX:" prefix
   // Check for incoming message and read into memory if one exists
   if(res_code[2] == 1) {
-    // Message avaliable and execute sbdrb
-    Serial3.print("AT+SBDRB\r");
-    // Read in data and check checksum
-    unsigned short size; // TODO : rawi may be two shorter
-    Serial3.bytesUntil(&size, 2); // TODO : Check memory layout
-    Serial3.bytesUntil(this->rawi, mes_len + 2); // +2 includes checksum
-    if(checksum(this->rawi, size) != *((unsigned short *)(this->rawi + size))
-      return -3; // TODO : Change behavior on checksum failure
-    this->new_data = true;
-    // Format new data into string
-    
+    // Message available and execute sbdrb
+    int attempts = 0;
+    while(attempts++ < 5 && !this->sbdrb()); // TODO : Adjust attempt limit
   } else if(res_code[2] == 2) {
     // Message downlink failed
     // TODO : failed downlink
   }
-
+  // TODO : Further error code handling and return code formatting
   return 0;
 }
+
+bool quake::sbdrb() {
+  // Send command
+  Serial3.print(F("AT+SBDRB\r"));
+  // Capture incoming data and check checksum
+  unsigned short size;
+  if(2 != Serial3.readBytes((char *)&size, 2))
+    return 0; // Message length read fails
+  if(size + 2 != (unsigned short) Serial3.readBytes(this->mesi, size + 2))
+    return 0; // Message read fails
+  if(calc_checksum(this->mesi, size) != *(unsigned char *)(this->mesi + size))
+    return 0; // Checksum error detected
+  // Format as a string // TODO : Excecute included AT commands here
+  this->mesi[size] = '\0';
+  return 1;
+}
+
+// ----------------
+// End quake class
+// ------------------------------------

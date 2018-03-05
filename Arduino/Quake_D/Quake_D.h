@@ -36,29 +36,18 @@ public:
    *  read_xxx() has been called. Once such a function is called this method
    *  will return true once more when another message has been recieved.
    */
-  bool new_message() {
+  bool has_new_mes() {
     return this->new_data;
   }
 
-  /*! Returns rawi[] - the unformatted version of the latest message recieved
-   *  by the quake. The message is in binary form and is formatted as follows:
-   *    { 2 bytes for message length } + { message } + { 2 byte checksum }
-   *  rawi[] has a length of 342.
-   *    @return raw message data
-   */
-  const unsigned char *get_mes_raw() {
-    this->new_data = false;
-    return this->rawi;
-  }
-
-  /*! Returns stri[] - the string formatted version of the latest message
+  /*! Returns mesi[] - the string formatted version of the latest message
    *  recieved by the Quake. The string contains the { message } portion of
-   *  the the raw message (see get_mes_raw()). The data is terminated by 0x00.
+   *  the the raw message. The data is terminated by 0x00.
    *    @return string message data
    */
-  const unsigned char *get_mes_str() {
+  const unsigned char *get_mes() {
     this->new_data = false;
-    return this->stri;
+    return this->mesi;
   }
 
   /*! Writes a message to the Quake outgoing data buffer. An sbdix session must
@@ -70,7 +59,7 @@ public:
    *    @return Quake response code
    *  // TODO : Explain -1 Quake timeout issue
    */
-  int write_message(unsigned char const *c, int size);
+  int write_message(unsigned char const *c, unsigned short size);
 
   /*! Begins an sbdix session on the Quake. The following task queued:
    *    1. The Quake attempts registration with Iridium.
@@ -106,18 +95,15 @@ private:
   bool new_data;
 
   /*! Input buffer for Serial3 reads from quake */
-  unsigned char rawi[342]; // TODO : Size depends on Serial3 buffer
-
-  // TODO : Formatted string message array
-
-  /*! Input buffer for Serial3 reads from quake */
-  unsigned char stri[342]; // TODO : Size depends on Serial3 buffer
+  unsigned char mesi[62]; // TODO : Size depends on Serial3 buffer
+                          // Serial3 buffer 64 bytes?
 
   /*! Executes the sbdrb Iridium command to read in an incoming message. The
    *  message is then formatted and stored in the mesi[] variable. It can be
-   *  retrieved 
+   *  retrieved with get_mes().
+   *    @return success flag
    */
-  void sbdrb();
+  bool sbdrb();
 
 };
 

@@ -4,6 +4,8 @@
 
 // TODO : Define error codes for end_sbdix()
 
+// TODO : Comment on general error code layout (<0 library defined >0 Quake)
+
 class quake {
 
 public:
@@ -21,7 +23,7 @@ public:
    *  sets the Quake's responses to the numeric format. This method must be
    *  called before using any other functionality in the quake class every time
    *  the Quake restarts.
-   *  Returns 0 if succesful and -1 otherwise.
+   *  Returns 1 if succesful and 0 otherwise.
    *  Failure of this method implies the Teensy isn't communicating properly
    *  with the Quake radio at all.
    */
@@ -32,7 +34,9 @@ public:
    *  read_xxx() has been called. Once such a function is called this method
    *  will return true once more when another message has been recieved.
    */
-  bool new_message();
+  bool new_message() {
+    return this->new_data;
+  }
 
   /*! Returns rawi[] - the unformatted version of the latest message recieved
    *  by the quake. The message is in binary form and is formatted as follows:
@@ -40,14 +44,18 @@ public:
    *  rawi[] has a length of 342.
    *    @return raw message data
    */
-  const char *get_mes_raw();
+  const unsigned char *get_mes_raw() {
+    return this->rawi;
+  }
 
   /*! Returns stri[] - the string formatted version of the latest message
    *  recieved by the Quake. The string contains the { message } portion of
    *  the the raw message (see get_mes_raw()). The data is terminated by 0x00.
    *    @return string message data
    */
-  const char *get_mes_str();
+  const unsigned char *get_mes_str() {
+    return this->stri;
+  }
 
   /*! Writes a message to the Quake outgoing data buffer. An sbdix session must
    *  be run for the data to be sent. If previous data has not yet been sent
@@ -56,6 +64,7 @@ public:
    *    @param c array pointer to outgoing message
    *    @param size number of bytes in outgoing message
    *    @return Quake response code
+   *  // TODO : Explain -1 Quake timeout issue
    */
   int write_message(unsigned char const *c, int size);
 

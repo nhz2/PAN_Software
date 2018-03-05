@@ -43,11 +43,12 @@ int write_message(unsigned char const *c, int size) {
   int len = Serial3.readBytesUntil('\0', res, 7); res[7] = '\0';
   if(len != 7 || !String((char *)res).equals(F("READY\r\n")))
     return -1;
-  // Write message to Quake outgoing buffer (calculate checksum too)
+  // Calculate message checksum
   unsigned const char *cf = c + size;
   unsigned short checksum = 0;
   while(c < cf)
     checksum += *(c++);
+  // Write message to Quake outgoing buffer
   Serial3.write(c, size);
   Serial3.write((char *)&checksum, 2);
   // Wait for Quake response

@@ -13,13 +13,13 @@ class quake {
 public:
 
   /*! Initializes Serial3 ports on the Teensy. Sets the Serial3 timeout value
-   *  used with readBytesUntil(...). Does not initiate any communication with
-   *  the Quake itself. See configure().
+   *  used with readBytesUntil(...) and readBytes(...). Does not initiate any
+   *  communication with the Quake itself. See configure().
    *    @param timeout timeout value for Serial3
    */
   quake(long timeout); // TODO : May toggle Quake Vcc to high as well
 
-  // void restart(); // TODO : Implement if Vcc control pin avaliable
+  // void restart_quake(); // TODO : Implement if Vcc control pin avaliable
 
   /*! Pings the Quake with "AT", listens for the "\r\nOK.\r\n" response, and
    *  sets the Quake's responses to the numeric format. This method must be
@@ -29,7 +29,7 @@ public:
    *  Failure of this method implies the Teensy isn't communicating properly
    *  with the Quake radio at all.
    */
-  int configure();
+  int configure(); // TODO : Look into disabling ring alerts
 
   /*! Signals whether a new message from sbdix is avaliable. Once one is
    *  avaliable, this method will return true until a function of the form
@@ -47,6 +47,7 @@ public:
    *    @return raw message data
    */
   const unsigned char *get_mes_raw() {
+    this->new_data = false;
     return this->rawi;
   }
 
@@ -56,6 +57,7 @@ public:
    *    @return string message data
    */
   const unsigned char *get_mes_str() {
+    this->new_data = false;
     return this->stri;
   }
 
@@ -81,7 +83,7 @@ public:
    */
   void start_sbdix() {
     Serial3.print("AT+SBDIX\r");
-    // TODO : sbdix goes to true
+    this->in_sbdix = true;
   }
 
   /*! Attempts to read the result of an sbdix session from the Quake. The
@@ -106,8 +108,16 @@ private:
   /*! Input buffer for Serial3 reads from quake */
   unsigned char rawi[342]; // TODO : Size depends on Serial3 buffer
 
+  // TODO : Formatted string message array
+
   /*! Input buffer for Serial3 reads from quake */
   unsigned char stri[342]; // TODO : Size depends on Serial3 buffer
+
+  /*! Executes the sbdrb Iridium command to read in an incoming message. The
+   *  message is then formatted and stored in the mesi[] variable. It can be
+   *  retrieved 
+   */
+  void sbdrb();
 
 };
 

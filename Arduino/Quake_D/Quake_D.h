@@ -81,6 +81,7 @@ public:
    */
   void start_sbdix() {
     Serial3.print("AT+SBDIX\r");
+    // TODO : sbdix goes to true
   }
 
   /*! Attempts to read the result of an sbdix session from the Quake. The

@@ -1,3 +1,11 @@
+// ------------------------------------
+// helper functions
+// -----------------
+
+
+// ------------------------------------
+// quake class implemenation
+// ----------------
 
 #include "Quake_D.h"
 
@@ -16,7 +24,7 @@ int quake::configure() {
   Serial3.print(F("AT\r"));
   unsigned char res[8]; res[7] = '\0';
   int len = Serial3.readBytesUntil('\0', res, 7);
-  if(len != 7 || !((String) res).equals(F("\r\nOK.\r\n")))
+  if(len != 7 || !String((char *)res).equals(F("\r\nOK.\r\n")))
     return 0;
   // Set responses to numeric
   Serial3.print(F("ATV0\r"));
@@ -32,7 +40,7 @@ int write_message(unsigned char const *c, int size) {
   // Wait for the ready response from Quake
   unsigned char res[8]; res[7] = '\0';
   int len = Serial3.readBytesUntil('\0', res, 7); res[7] = '\0';
-  if(len != 7 || !((String) res).equals(F("READY\r\n")))
+  if(len != 7 || !String((char *)res).equals(F("READY\r\n")))
     return -1;
   // Write message to Quake outgoing buffer (calculate checksum too)
   unsigned char *cf = c + size;
@@ -42,7 +50,7 @@ int write_message(unsigned char const *c, int size) {
   Serial3.write(c, size);
   Serial3.write(&checksum, 2);
   // Wait for Quake response
-  int len = Serial3.readBytesUntil('\r', res, 2);
+  len = Serial3.readBytesUntil('\r', res, 2);
   if(len != 2)
     return -1;
   *res -= '0';

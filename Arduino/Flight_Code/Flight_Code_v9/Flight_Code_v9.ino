@@ -1,14 +1,14 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
-  _______     _       ____  _____   ________  __    _         __       _       ______                __
+   _______     _       ____  _____   ________  __    _         __       _       ______                __
   |_   __ \   / \     |_   \|_   _| |_   __  |[  |  (_)       [  |     / |_   .' ___  |              |  ]
-  | |__) | / _ \      |   \ | |     | |_ \_| | |  __   .--./)| |--. `| |-' / .'   \_|  .--.    .--.| | .---.
-  |  ___/ / ___ \     | |\ \| |     |  _|    | | [  | / /'`\;| .-. | | |   | |       / .'`\ \/ /'`\' |/ /__\\
-  _| |_  _/ /   \ \_  _| |_\   |_   _| |_     | |  | | \ \._//| | | | | |,  \ `.___.'\| \__. || \__/  || \__.,
+    | |__) | / _ \      |   \ | |     | |_ \_| | |  __   .--./)| |--. `| |-' / .'   \_|  .--.    .--.| | .---.
+    |  ___/ / ___ \     | |\ \| |     |  _|    | | [  | / /'`\;| .-. | | |   | |       / .'`\ \/ /'`\' |/ /__\\
+   _| |_  _/ /   \ \_  _| |_\   |_   _| |_     | |  | | \ \._//| | | | | |,  \ `.___.'\| \__. || \__/  || \__.,
   |_____||____| |____||_____|\____| |_____|   [___][___].',__`[___]|__]\__/   `.____ .' '.__.'  '.__.;__]'.__.'
-                                                     ( ( __))
+                                                        ( ( __))
 */
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include <Wire.h>
 #include <LIS3MDL.h>
 #include <LSM6.h>
@@ -16,7 +16,7 @@
 #include <time.h>
 #include <math.h>
 
-#define USBCONNECT  //Inlines Ground Testing Functions. Remove Before Flight
+//#define USBCONNECT  //Inlines Ground Testing Functions. Remove Before Flight
 
 //State Machine Definition
 #define DORMANT_CRUISE  1
@@ -144,7 +144,7 @@ unsigned long FillTimeoutTime = 10000; //Time to abort Tank Filling After, Curre
 
 class vec3
 {
-    //Class to Hold Vectors for Orbital Pos/Vel and Other vector values
+    //Public Class to Hold Vectors for Orbital Pos/Vel and Other vector values
   public:
     double x;
     double y;
@@ -169,8 +169,6 @@ class vec3
     }
 
     double magnitude() {
-      //Serial.print("mag: ");
-      //Serial.println((x * x + y * y + z * z).sqrt());
       return pow(x * x + y * y + z * z, 0.5);
     }
 
@@ -215,6 +213,7 @@ void print_binary(int v, int num_places) {
 }
 
 void printArray(uint8_t arr[], int s) {
+  //Prints Byte Array in Binary Format to USB Serial
 #ifdef USBCONNECT
   for (int i = 0; i < s; i++) {
     print_binary(arr[i], 8);
@@ -224,8 +223,8 @@ void printArray(uint8_t arr[], int s) {
 #endif
 }
 
-float fmap(float x, float in_min, float in_max, float out_min, float out_max)
-{
+float fmap(float x, float in_min, float in_max, float out_min, float out_max) {
+  //Proportionally maps a float value to a range from out_min to out_max
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
@@ -247,6 +246,7 @@ class Scheduler {
     int Stored;
 
     bool insert(Event * e, int index) {
+      //Adds Event e at index in the Queue, private method as Index is determined by add()
       if (Stored < 20) {
         Event * temp[20 - index] = {0};
         for (int i = 0; i < (20 - index); i++) {
@@ -274,6 +274,7 @@ class Scheduler {
     }
 
     bool addEvent(Event * e) {
+      //Determines Correct location in Event Queue and stores Event in sequential order
       if (Stored >= 20) {
         //Destroy Event to Prevent RAM Leak
         free(e->eventData);
@@ -281,14 +282,10 @@ class Scheduler {
         return false;
       } else {
         int ind = 0;
-        //Serial.println("\n Storing: " + String(e->sTime));
-        //Serial.println("Stored: " + String(Stored));
         bool found = false;
         for (int i = 0; i < Stored; i++) {
-          //Serial.println("Here " + String(Events[i]->sTime));
           ind = i;
           if ((e->sTime) <= (Events[i]->sTime)) {
-            //Serial.println("Spot Found");
             found = true;
             break;
           }
@@ -296,12 +293,12 @@ class Scheduler {
         if (!found) {
           ind = Stored; //New Value Goes at the end
         }
-        //Serial.println("\nInsertion Index is " + String(ind));
         return insert(e, ind);
       }
     }
 
     long getNextEventTime() {
+      //Fetch Next event start time, Requires Correct ordering of Events
       if (Stored > 0) {
         return Events[0]->sTime;
       } else {
@@ -310,12 +307,12 @@ class Scheduler {
     }
 
     void * getNextEvent() {
-      //CANNOT Call if Stored == 0, //TODO
+      //CANNOT Call if Stored == 0, //TODO Null Exception
       return Events[0];
     }
 
     void popEvent() {
-      //Assumes Event has occured
+      //Removes 1st Event from queue and shifts remaining down, Assumes Event has occured
       free(Events[0]->eventData);
       free(Events[0]);
       for (int i = 0; i < (Stored - 1); i++) {
@@ -326,6 +323,7 @@ class Scheduler {
     }
 
     void clearEvents() {
+      //Destroys all Events in queue, Testing or Failsafe
       for (int i = 0; i < Stored; i++) {
         free(Events[i]->eventData);
         free(Events[i]);
@@ -335,6 +333,7 @@ class Scheduler {
     }
 
     void print() {
+      //Debugging Output
 #ifdef USBCONNECT
       if (Stored) {
         Serial.println("\nScheduler: " + String(Stored) + " Events Stored");
@@ -350,6 +349,8 @@ class Scheduler {
 
 
 class GPSData {
+    //Data Structure to Hold returned data from Piksi GPS
+    //Not all Values will be used in final Version
   public:
 
     int GPS_year; //  GPS year
@@ -409,13 +410,12 @@ double  ArgPeri;
 double  TrueAnomaly;
 
 class masterStatus {
-    //Class to hold entire State of Spacecraft Operation except timers
+    //Class to hold entire State of Spacecraft Operation except timers and thresholds
   public:
     Scheduler Sch;
 
     bool hardwareAvTable[11];//Hardware Avaliability Table
     //[Imu, SX+,SX-,SY+, SY-, SZ+, SZ-,Temp,DoorSense,LightSense,ADCS]
-    //Fix PopCommand Av Swap Limit if changed
 
     //Safe Hold Flag
     int SafeHoldFlag;
@@ -443,10 +443,10 @@ class masterStatus {
     //ADCS State Variables
     float RWA1_RotorSpeed;//  Rotor speed of CMG 1
     float RWA1_RotorTorque;//  Rotor torque of CMG 1
-    float RWA2_RotorSpeed;// Rotor speed of CMG 1
-    float RWA2_RotorTorque;//  Rotor torque of CMG 1
-    float RWA3_RotorSpeed;// Rotor speed of CMG 1
-    float RWA3_RotorTorque;//  Rotor torque of CMG 1
+    float RWA2_RotorSpeed;// Rotor speed of CMG 2
+    float RWA2_RotorTorque;//  Rotor torque of CMG 2
+    float RWA3_RotorSpeed;// Rotor speed of CMG 3
+    float RWA3_RotorTorque;//  Rotor torque of CMG 3
 
     float SunX;//  Sun Sensor x component {Ch 6 or 9}
     float SunY;//  Sun Sensor y component {Ch 6 or 9}
@@ -593,6 +593,7 @@ class masterStatus {
     }
 
     void printOrbit() {
+      //Debugging to Check Math Accuracy
       Serial.println("\nOrbital Parameters: ");
       Serial.print("  Semimajor Axis: ");
       Serial.println(SemiMajorAxis);
@@ -639,7 +640,7 @@ void getIMUData() {
 }
 
 void getTempSensors() {
-  //Toggel TempMux to read Temperature Sensors
+  //Toggel TempMux to read Temperature Sensors with Valid Delay
   digitalWrite(TempMux1, LOW);
   digitalWrite(TempMux2, LOW);
   delayMicroseconds(5);
@@ -661,14 +662,14 @@ void getTempSensors() {
 
 void SensorDataCollect(int type = 0) {
   //Collect Sensor Data and Average it if sufficient time has passed
-  //TODO Force multiple runs after long functions has run
+  //TODO Force multiple runs after long functions has run if needed
   getIMUData();
   getTempSensors();
   DataRecords++;
-  //TODO Measure Tank2 Pressure
-  if (millis() - lastSensorTime > SensorDwell) { //SensorDwell ~10ms
-    //Add Any Averaging Data
+  //TODO Measure Tank2 Pressure (Check Sensor Range after Power picks amp circuit)
 
+  if (millis() - lastSensorTime > SensorDwell) { //SensorDwell ~2ms
+    //Add Any Averaging Data (Pressure)
     MSH.Gyro[0] = MSH.GyroAcc[0] / ((float)DataRecords);
     MSH.Gyro[1] = MSH.GyroAcc[1] / ((float)DataRecords);
     MSH.Gyro[2] = MSH.GyroAcc[2] / ((float)DataRecords);
@@ -694,15 +695,18 @@ void SensorDataCollect(int type = 0) {
 
 
 class commandBuffer {
-    //Class which holds a stack of currently waiting commands which have not been processed
+    //Class which temporariliy holds a stack of currently waiting commands which have not been processed
   public:
-    int commandStack[200][2];
+    int commandStack[200][2]; //Allocate Array at Compile Time
     int openSpot;
+
     commandBuffer() {
       memset(commandStack, -1, sizeof(commandStack[0][0]) * 200 * 2);
       openSpot = 0;
     }
+
     void print() {
+      //Debugging Output
 #ifdef USBCONNECT
       //Serial formatting and Serial output
       int i = 0;
@@ -722,13 +726,18 @@ class commandBuffer {
 #endif
     }
 };
+
+//Global Variable Definition
 commandBuffer cBuf;
 
+#ifdef USBCONNECT
 volatile bool stall = true;
 void waitForInterrupt() {
+  //Debugging Stall to check data w/oscilliscope
   stall = false;
   //noInterrupts();
 }
+#endif
 
 float roundDecimal(float num, int places) {
   int roundedNum = round(pow(10, places) * num);
@@ -736,6 +745,7 @@ float roundDecimal(float num, int places) {
 }
 
 String chop(float num, int p) {
+  //Trucate float to number of decimal points for printing
   String s = String(num);
   if (p == 0) {
     return s.substring(0, s.indexOf('.'));
@@ -868,8 +878,11 @@ boolean isInputValid(String input) {
 #ifdef USBCONNECT
 void * p; //Testing pointer for Memory leaks. Ensure not included on flight version
 #endif
+
 void popCommands() {
   //Process all the Incoming Commands
+  //Flight Version Supported Commands on OneDrive under CDH folder
+  //Not All are added yet
   long start = millis();
   while (cBuf.openSpot > 0 && millis() - start < manualTimeout) {
     if (cBuf.openSpot > 0) {
@@ -999,7 +1012,7 @@ void popCommands() {
 
 
 void readSerialAdd2Buffer() {
-  //Read Testing Commands from USB Serial
+  //Read Testing Commands from USB Serial, verify correcr format, and execute them
   if (Serial.available() > 0) {
     //Serial.println("Reading Testing Command");
     String comString = "";
@@ -1028,7 +1041,7 @@ void readSerialAdd2Buffer() {
 
 bool fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsigned long t3, unsigned long t4) {
   //Fires Thrusters at millis()>=sTime for Durations t1-t4 for each thruster
-  //THIS FUNCTION HAS CODE EVAL DURATION > 1s!
+  //THIS FUNCTION HAS CODE EVAL DURATION ~= 1s! in current format
   //TODO Pressure Check?
   unsigned long delayendT = millis() + 5000; //Wait up till 5 sec to start thruster firing, if >5s pass -> error -> abort firing
   unsigned long LastOff = (unsigned long)max(max(t1, t2), max(t3, t4));
@@ -1038,9 +1051,9 @@ bool fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsi
 
   unsigned long endLastOff = LastOff + sTime + 1; //Make Sure all End Times are within loop so valves close
   unsigned long endt1 = t1 + sTime;
-  unsigned long endt2 = t2 + sTime;
-  unsigned long endt3 = t3 + sTime;
-  unsigned long endt4 = t4 + sTime;
+  unsigned long endt2 = t2 + sTime; //+3ms
+  unsigned long endt3 = t3 + sTime; //+6ms
+  unsigned long endt4 = t4 + sTime; //+9ms
   while (millis() <= sTime) {
     if (millis() > delayendT) {
       //TODO Timing Error
@@ -1112,6 +1125,7 @@ bool fireThrusters(unsigned long sTime, unsigned long t1, unsigned long t2, unsi
 }
 
 int genThrustFiringID(unsigned long t1, unsigned long t2, unsigned long t3, unsigned long t4) {
+  //Generate ID#, Uses numbers from Prop Team but could be simpler if just bitwise flags
   if (t1 <= 0 && t2 <= 0 && t3 <= 0 && t4 <= 0) {
     return 0; //All Off
   }
@@ -1167,6 +1181,7 @@ int genThrustFiringID(unsigned long t1, unsigned long t2, unsigned long t3, unsi
 }
 
 void pressurizeTank2() {
+  //Check Tank 2 Pressure, if low pulse valve to partially fill. If full do nothing
   unsigned long endT = millis() + FillTimeoutTime; //Fill Time for 1 iteration
   SensorDataCollect();
   if (MSH.PressCurrent < PresThreshold) {
@@ -1242,6 +1257,8 @@ void sectionReadToValue(String s, int * data, int dataSize) {
 
 
 bool requestFromADCS() {
+  //OUTDATED FORMAT
+  //Needs ADCS Code to determine what data needs to be returned
   String res = "";
   bool success = false;
   if (WireConnected) {
@@ -1279,6 +1296,9 @@ bool requestFromADCS() {
 
 
 String buildIMUDataCommand() {
+  //OUTDATED FORMAT
+  //Needs ADCS Code to determine what data needs to be Sent
+  //Will Likely just be desired actuation or attitude and mode
   // ex. gyro data: "11,3.653!12,2.553!13,-10!"
   String res = "";
   //Sends Info x1000
@@ -1295,6 +1315,7 @@ String buildIMUDataCommand() {
 }
 
 void sendIMUToADCS() {
+  //Generate IMU data command and transmit to ADCS Board
   String SCommand = buildIMUDataCommand();
   char SComCharA[SCommand.length() + 1];
   SCommand.toCharArray(SComCharA, SCommand.length() + 1);
@@ -1322,7 +1343,8 @@ void sendIMUToADCS() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-//p31u-6
+//p31u-6 Data Structure
+//  Must use this formate as transmission is less that Serial Max
 typedef struct {
   uint16_t pv[3]; //Photo-voltaic input voltage [mV]
   uint16_t pc; //Total photo current [mA]
@@ -1386,7 +1408,7 @@ typedef struct {
 //  //ONLY WORKS WITH THE SAME ENDIANESS
 //  //Serial.println(tmp.
 //}
-//
+
 void fetchHouseKeeping() {
   //Fetch eps_hk_vi_t
   Wire.beginTransmission(0x0C);
@@ -1397,7 +1419,7 @@ void fetchHouseKeeping() {
   byte temp[100] = {0};
   byte hk_vi_t[20] = {0};
 
-  //Read Retu
+  //Read Return
   int i = 0;
   while (Wire.available()) {
     temp[i] = Wire.read();
@@ -1406,9 +1428,7 @@ void fetchHouseKeeping() {
   i = 0;
 
   //CAN CAST DIRECTLY!!! Easy conversion
-
-
-
+  //Change to New Format
 }
 
 
@@ -1418,6 +1438,7 @@ void rebootGS() {
   int outgoingByte1[] = {0x07};
   int outgoingByte2[] = {0x80};
   int outgoingByte3[] = {0x07};
+
   Wire.write(outgoingByte[0]);
   Wire.write(outgoingByte1[0]);
   Wire.write(outgoingByte2[0]);
@@ -1428,12 +1449,14 @@ void rebootGS() {
 
 
 void setGomSpaceSlaveMode() {
-
+  //Reset GS to I2C Slave Mode if saved mode returns to factory default
+  //Accessible via Uplink Command
 }
 
 
 bool pingGS() {
   //Pings the GomSpace Board to verify that its functioning, ping returns whatever value is sent to it.
+  //Multibyte Values have Different Endianness
   Wire.beginTransmission(0x0C);
   Wire.write(1);
   Wire.write(7);
@@ -1473,7 +1496,7 @@ void kickGS(bool p = false) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////GNC Calculation///////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
+
 //double inverseCosTS(double n) {
 //  //9 Term Taylor Expansion of Inverse Cosine in Radians
 //
@@ -1510,6 +1533,7 @@ void kickGS(bool p = false) {
 //}
 
 bool isNearZero(double v) {
+  //Check if Value is near zero
   return (v < (double)(0.00001) && v > (double)(0.00001));
 }
 
@@ -1522,7 +1546,7 @@ void genOrbitalElements(vec3 posECI, vec3 velECI) {
   //init.CS.V = [0 6649.756 3839.2385]; % inclination angle of 30deg [m/s]
 
   posECI = vec3((double)(6760636.6), (double)(0.0), (double)(0.0));
-  velECI = vec3( (double)(0.0), (double)(6649.756), (double)(3839.2385));
+  velECI = vec3((double)(0.0), (double)(6649.756), (double)(3839.2385));
 
   posECI.print();
   velECI.print();
@@ -1641,6 +1665,7 @@ void genOrbitalElements(vec3 posECI, vec3 velECI) {
 
 
 void * GNC_calcNextFiring() {
+  //Call GNC Function to plan next manuever, Requires Completion of GNC Simulink for porting
   if (MSH.Sch.getNumStored() < 20) {
     int * eData = (int*)malloc(sizeof(int) * 4);
     Event *e = (Event *)malloc(sizeof(Event));
@@ -1653,6 +1678,8 @@ void * GNC_calcNextFiring() {
     //TODO Convert GNC Output Location to Time from Now
 
     //BoilerPlate for Testing
+//Store Impulse //TODO
+    
     eData[0] = 10; eData[1] = 10;  eData[2] = 10;  eData[3] = 10;
     e->eventData = eData;
     e->sTime = millis() + random(5000, 15000); //TODO Random Start time 5-15s in future for testing
@@ -1701,6 +1728,8 @@ int freeRam () {
 }
 
 void modeControl() {
+  //Modify Spacecraft State based on thresholds for various health or mission phase parameters
+  //Commented out for Debugging
   switch (MSH.State) {
     case (NORMAL_OPS): {
         //
@@ -1731,7 +1760,7 @@ void modeControl() {
         //
         //        //Thermal Over/Underheat Detection
         //        if (millis() - LastThermalCheck > ThermalCheck) {
-        //          float T_avg = 0; //TODO Max? Min? Avg?
+        //          float T_avg = 0; //TODO Max
         //          for (int i = 0; i < 4; i++) {
         //            T_avg += MSH.Temp[i];
         //          }
@@ -1765,6 +1794,7 @@ void modeControl() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //void Stall() {
+//  //Debugging force stall until External Action
 //  stall = true;
 //  long start = millis();
 //#ifdef USBCONNECT
@@ -1852,9 +1882,13 @@ void setup() {
 long LastTestingTime;
 
 void loop() {
+  //Main Loop
+
+  //Visual Exception Display, If LED is Off Code has Crashed
   digitalWrite(13, HIGH);
   digitalWrite(13, LOW);
 
+  //Testing Timer for Debugging Arbitrary Calls
   if (millis() - LastTestingTime >= 4000) {
 
     LastTestingTime = millis();
@@ -1865,7 +1899,7 @@ void loop() {
   readSerialAdd2Buffer(); //Testing Command Input
 #endif
 
-
+  //SCHEDULER:
   //Process Next Scheduled Event if it Starts in less than 1s //TODO make Variable Prep Time?
   long nextETime = MSH.Sch.getNextEventTime();
   if (nextETime > 0 && (nextETime < millis() || nextETime - millis() <= 1000)) { //Event Processing Occurs 1s before deadline time
@@ -1899,12 +1933,16 @@ void loop() {
 
   }
 
-  //WatchDog Timer
+  //WATCHDOG TIMER:
   //kickGS(); //Reset Timer so GS doesn't reboot
 
-  //Main Mode of Operation Switch
+  //MAIN SPACECRAFT MODE SWITCH STATEMENT
   switch (MSH.State) {
     case (NORMAL_OPS): {
+        //Standard Mode of Operation:
+        //  Hold Attitude as Prograde
+        //  Montitor Health of Subsystems
+        //  Downlink at Specified Frequenct=y
 
         //Collect Sensor Data
         SensorDataCollect();
@@ -1972,92 +2010,89 @@ void loop() {
         //        }
 
         //IMU Testing Display
-        //#ifdef USBCONNECT
-        //Serial.print(millis() - LastSpinCheckT);
-        if (millis() - LastSpinCheckT > SpinCheckTime) {
 #ifdef USBCONNECT
-          Serial.print(("<G:") + String(MSH.Gyro[0], 2) + "|" +
-                       String(MSH.Gyro[1], 2) + "|" +
-                       String(MSH.Gyro[2], 2) + ">");
-          Serial.print(("<MG:") + String(MSH.Mag[0], 2) + "|" +
-                       String(MSH.Mag[1], 2) + "|" +
-                       String(MSH.Mag[2], 2) + ">");
-          Serial.print(("<AC:") + String(MSH.Accel[0], 2) + "|" +
-                       String(MSH.Accel[1], 2) + "|" +
-                       String(MSH.Accel[2], 2) + ">");
+        Serial.print(("<G:") + String(MSH.Gyro[0], 2) + "|" +
+                     String(MSH.Gyro[1], 2) + "|" +
+                     String(MSH.Gyro[2], 2) + ">");
+        Serial.print(("<MG:") + String(MSH.Mag[0], 2) + "|" +
+                     String(MSH.Mag[1], 2) + "|" +
+                     String(MSH.Mag[2], 2) + ">");
+        Serial.print(("<AC:") + String(MSH.Accel[0], 2) + "|" +
+                     String(MSH.Accel[1], 2) + "|" +
+                     String(MSH.Accel[2], 2) + ">");
 #endif
-          LastSpinCheckT = millis();
-        }
-        //#endif
+        LastSpinCheckT = millis();
+      }
 
 #ifdef USBCONNECT
-        //Battery Power Display
-        //Serial.print(millis() - LastBattCheck);
-        if (millis() - LastBattCheck > BattCheckTime) {
-          //TODO GomSpace Packet Fetch in Update Sensors
-          Serial.print("<B:" + String(MSH.Battery) + ">");
-          LastBattCheck = millis();
-        }
+      //Battery Power Display
+      if (millis() - LastBattCheck > BattCheckTime) {
+        //TODO GomSpace Packet Fetch in Update Sensors
+        Serial.print("<B:" + String(MSH.Battery) + ">");
+        LastBattCheck = millis();
+      }
 #endif
 
 #ifdef USBCONNECT
-        //Thermal Protection/Control Display //TODO
-        if (millis() - LastThermalCheck > ThermalCheck) {
-          float T_avg = 0; //TODO Max? Min? Avg?
-          for (int i = 0; i < 4; i++) {
-            T_avg += MSH.Temp[i];
-          }
-          T_avg = T_avg / 4.0;
-          LastThermalCheck = millis();
-          Serial.print("<T:" + String((float)T_avg) + ">");
+      //Thermal Protection/Control Display //TODO
+      if (millis() - LastThermalCheck > ThermalCheck) {
+        float T_avg = 0; //TODO Max? Min? Avg?
+        for (int i = 0; i < 4; i++) {
+          T_avg += MSH.Temp[i];
         }
+        T_avg = T_avg / 4.0;
+        LastThermalCheck = millis();
+        Serial.print("<T:" + String((float)T_avg) + ">");
+      }
 #endif
+      break;
+
+    case (DORMANT_CRUISE):
+      //45 min Dormant Cruise after Deployment from PPOD
+      if (millis() > 45 * 60 * 1000) {
+        MSH.NextState = INITALIZATION;
+        initEntry = millis();
+      } else {
+        delay(10000);
+      }
+      break;
+
+    case (INITALIZATION): {
+        //TODO Checkout and downlink
+
+        if (millis() - initEntry > (long)2700000) { //Force to Normal Ops
+          //call downlink function
+          //TODO
+          MSH.NextState = NORMAL_OPS;
+        }
         break;
       }
-      //    case (DORMANT_CRUISE):
-      //      //45 min Dormant Cruise
-      //      if (millis() > 45 * 60 * 1000) {
-      //        MSH.NextState = INITALIZATION;
-      //        initEntry = millis();
-      //      } else {
-      //        delay(10000);
-      //      }
-      //      break;
-      //
-      //    case (INITALIZATION): {
-      //        //TODO Checkout and downlink
-      //
-      //        if (millis() - initEntry > (long)2700000) { //Force to Normal Ops
-      //          //call downlink function
-      //          //TODO
-      //          MSH.NextState = NORMAL_OPS;
-      //        }
-      //        break;
-      //      }
-      //
-      //    case (ECLIPSE): {
-      //        MSH.NextState = NORMAL_OPS;
-      //        //TODO
-      //      }
-      //
-      //    case (SAFE_HOLD):
-      //      MSH.NextState = NORMAL_OPS;
-      //      //TODO wait for Uplink Commands
-      //      break;
+
+    //    case (ECLIPSE): {
+    //        MSH.NextState = NORMAL_OPS;
+    //        //TODO
+    //      }
+
+    case (SAFE_HOLD):
+      MSH.NextState = NORMAL_OPS;
+      //TODO wait for Uplink Commands
+      break;
 
   }
 
   //Determine Next Mode
-  //modeControl();
+  modeControl();
 
-  //Testing Iterators
+#ifdef USBCONNECT
+  //Testing/Timing Iterators
   cycle++;
 
+  //Debugging Serial Output
   if (((millis() - LastTimeTime) > TimeTime)) { //Prevent Screen Spam
     //Serial.println();
     MSH.Sch.print();
     long t = millis();
-#ifdef USBCONNECT
+
     int hours = t / (long)(60 * 60 * 1000);
     int mins = t / ((long)60 * 1000) % ((long)60 * 1000);
 
@@ -2072,10 +2107,10 @@ void loop() {
     s += "[SCH:" + String(MSH.Sch.getNumStored()) + "]";
     s += ("[" + String(freeRam() / 1024.0, 3) + "kB]");
     Serial.print(s);
-#endif
     LastTimeTime = t;
     cycle = 1;
   }
+  #endif
 }
 
 

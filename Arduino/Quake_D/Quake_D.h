@@ -4,106 +4,83 @@
 
 #include <Wire.h>
 
-// TODO : Define error codes for end_sbdix()
-
-// TODO : Comment on general error code layout (<0 library defined >0 Quake)
-
-class quake {
+/*! // TODO : Class specification
+ */
+class qlocate {
 
 public:
 
-  /*! Initializes Serial3 ports on the Teensy. Sets the Serial3 timeout value
-   *  used with readBytesUntil(...) and readBytes(...). Does not initiate any
-   *  communication with the Quake itself. See configure().
-   *    @param timeout timeout value for Serial3
+  /*! The quake constructor is responsible for configuring the serial port
+   *  dedicated to communicating with the QLocate and initializing class
+   *  variables to their defaults - sbdix_running is set to false.
    */
-  quake(long timeout); // TODO : May toggle Quake Vcc to high as well
+  qlocate(HardwareSerial *port, int timeout);
 
-  // void restart_quake(); // TODO : Implement if Vcc control pin avaliable
-
-  /*! Pings the Quake with "AT", listens for the "\r\nOK.\r\n" response, and
-   *  sets the Quake's responses to the numeric format. This method must be
-   *  called before using any other functionality in the quake class every time
-   *  the Quake restarts.
-   *  Returns 1 if succesful and 0 otherwise.
-   *  Failure of this method implies the Teensy isn't communicating properly
-   *  with the Quake radio at all.
+  /*! This manipulates the settings of the QLocate and sets it to communicate
+   *  via the 3 pin interface. It needs to be called prior to calling any other
+   *  function which interfaces with the QLocate. This method sends the QLocate
+   *  the following AT commands:
+   *    1. AT&F0       - restores to factory defaults
+   *    2. AT&K0       - disable RTS & CTS flow control
+   *    3. AT&D0       - ignores the DTR pin
+   *    4. ATE0        - disables echo
+   *    5. ATV0        - sets responses to numeric mode
+   *    6. AT+SBDMTA=0 - disables RING alerts
+   *    7. +SBDD2      - clears the QLocate's buffer
+   *  The function returns -1 if no response is heard from the QLocate, 1 if the
+   *  response received was not expected, and 0 if the function was succesful.
+   *    @return status code of -1, 0, or 1
    */
-  int configure(); // TODO : Look into disabling ring alerts
+  int config();
 
-  /*! Signals whether a new message from sbdix is avaliable. Once one is
-   *  avaliable, this method will return true until a function of the form
-   *  read_xxx() has been called. Once such a function is called this method
-   *  will return true once more when another message has been recieved.
+  /*! Writes data to the QLocate's MO buffer. The data held here will be
+   *  transmitted to Iridium during the next sbdix session. The MO buffer can
+   *  only hold a single message at a time with a max length of 340 bytes.
+   *    @param c pointer to binary data
+   *    @param len length of binary data
+   *    @return status code
    */
-  bool has_new_mes() {
-    return this->new_data;
+  int write_mo_buf(char const *c, int len);
+
+  /*! Initiates an sbdix session. Data that you wish to transmit should be
+   *  loaded into the QLocate with sbdwb(...) prior to initiating an sbdix
+   *  session. The sbdix session can be ended with end_sbdix(). Note that while
+   *  the sbdix session is in session, no other commands may be sent to the
+   *  QLocate.
+   *    @return status code
+   */
+  int run_sbdix() {
+    // Ensure no ongoing sbdix session
+    if(sbdix_running) return -2;
+    // Clear port buffer and initiate sbdix session
+    port->clear();
+    port->print(F("AT+SBDIX\r"));
   }
 
-  /*! Returns mesi[] - the string formatted version of the latest message
-   *  recieved by the Quake. The string contains the { message } portion of
-   *  the the raw message. The data is terminated by 0x00.
-   *    @return string message data
-   */
-  const unsigned char *get_mes() {
-    this->new_data = false;
-    return this->mesi;
-  }
-
-  /*! Writes a message to the Quake outgoing data buffer. An sbdix session must
-   *  be run for the data to be sent. If previous data has not yet been sent
-   *  via sbdix, the Quake's outgoing buffer will be written over. Quake
-   *  response code is returned.
-   *    @param c array pointer to outgoing message
-   *    @param size number of bytes in outgoing message
-   *    @return Quake response code
-   *  // TODO : Explain -1 Quake timeout issue
-   */
-  int write_message(unsigned char const *c, unsigned short size);
-
-  /*! Begins an sbdix session on the Quake. The following task queued:
-   *    1. The Quake attempts registration with Iridium.
-   *    2. A loaded message will be transmitted to Iridium.
-   *    3. Any pending messages will be downloaded from the Iridium.
-   *    4. Sets in_sbdix to true.
-   *  The Quakes response will take ~ // TODO : Completion time estimate.
-   *  It is recommended to wait some time before querying the result of the
-   *  sbdix session (see end_sbdix()).
-   */
-  void start_sbdix() {
-    Serial3.print("AT+SBDIX\r");
-    this->in_sbdix = true;
-  }
-
-  /*! Attempts to read the result of an sbdix session from the Quake. The
-   *  following tasks are executed:
-   *    1. Read the sbdix response from the Serial3 buffer.
-   *    2. Download a message from the Quake buffer if present and set new_data
-   *       to true if neccesary.
-   *    3. Format error response if any. // TODO : Format error codes
-   *    4. Sets in_sbdix to false.
-   *    @return sbdix error response
-   */
   int end_sbdix();
 
-private:
+protected:
 
-  /*! Indicates if an sbdix session is ongoing */
-  bool in_sbdix;
+  /*! Flag for currently running sbdix session */
+  bool sbdix_running;
 
-  /*! Indicates if a new message has been recieved via sbdix */
-  bool new_data;
+  /*! Serial port dedicated to communication with the QLocate */
+  HardwareSerial *port;
 
-  /*! Input buffer for Serial3 reads from quake */
-  unsigned char mesi[62]; // TODO : Size depends on Serial3 buffer
-                          // Serial3 buffer 64 bytes?
-
-  /*! Executes the sbdrb Iridium command to read in an incoming message. The
-   *  message is then formatted and stored in the mesi[] variable. It can be
-   *  retrieved with get_mes().
-   *    @return success flag
+  /*! This function consumes an expected response from the serial port
+   *  associated with the QLocate. The method returns 0 if the expected response
+   *  is read from the port, 1 if the response is unexpected, and -1 if no
+   *  response is read before the call to port->readBytes() times out.
+   *    @param res the expected string response from the quake
+   *    @return status code of -1, 1, or 1
    */
-  bool sbdrb();
+  int consume(String res);
+
+  /*! Calculates the checksum of binary data according to Iridium requirements.
+   *  Be aware that the returned short is in little endian and the checksum is
+   *  is written to the quake in big endian - on the teensy 3.5 at least.
+   */
+  short checksum(char const *c, int len);
 
 };
 

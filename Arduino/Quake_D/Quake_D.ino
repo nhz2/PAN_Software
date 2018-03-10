@@ -1,9 +1,16 @@
-void setup() {
-  // put your setup code here, to run once:
 
+#include "Quake_D.h"
+
+qlocate q(&Serial3, 2000);
+
+void setup() {
+  Serial.begin(9600);
+  q.config();
+  char c[] = {'h','e','l','l','o'};
+  int res = q.sbdwb(c, 5);
+  Serial.println(res);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-
+  delay(1000);
 }

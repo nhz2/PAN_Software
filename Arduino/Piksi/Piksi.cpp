@@ -6,10 +6,13 @@
 #include <Wire.h>
 #include <Time.h>
 
+//forward declare
+//class Piksi;
+
 //Constructor///////////////////////////////
-Piski::Piksi(HardwareSerial piksiSerial)
+Piksi::Piksi(HardwareSerial piksiSerial)
 {
-  const unsigned int MAX_INPUT = 2000;
+  
   mySerial = piksiSerial;
   mySerial.begin (115200);                              // Piksi serial to GPS
 
@@ -96,7 +99,8 @@ void Piksi::processIncomingByte (const byte inByte, int& GPS_week, long&GPS_ToW,
     double& GPS_heading, int& GPS_head_flags, int& newdata)
 {
 
-
+    const unsigned int MAX_INPUT = 2000;
+    
     static byte input_msg [MAX_INPUT];
     static unsigned int input_pos = 0;             
 
@@ -200,7 +204,7 @@ void Piksi::processIncomingByte (const byte inByte, int& GPS_week, long&GPS_ToW,
 }
 
 
-void Piski::msg_analyse_time (byte byte_msg[40],int& GPS_week, long& GPS_ToW, long& GPS_timestamp)
+void Piksi::msg_analyse_time (byte byte_msg[40],int& GPS_week, long& GPS_ToW, long& GPS_timestamp)
 {
     int nrofweek=0;
     int timeofweek=0;
@@ -256,7 +260,7 @@ void Piksi::msg_analyse_ecef (byte byte_msg[40], double& GPS_base_x, double& GPS
 }
 
 
-void Piski::msg_analyse_head (byte byte_msg[40], double& GPS_heading, int& GPS_head_flags)
+void Piksi::msg_analyse_head (byte byte_msg[40], double& GPS_heading, int& GPS_head_flags)
 {
     GPS_heading = Bytes2Intu32 (byte_msg[12], byte_msg[11], byte_msg[10], byte_msg[9]);
     GPS_head_flags = byte_msg[11];

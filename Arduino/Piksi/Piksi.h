@@ -17,6 +17,7 @@ class Piksi
 
   private:
     HardwareSerial mySerial;
+    
 
     void processIncomingByte (const byte inByte, int& GPS_week, long& GPS_ToW, long& GPS_timestamp, 
       double& GPS_lat, double& GPS_lng, double& GPS_height, int& GPS_pos_flags,

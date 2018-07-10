@@ -86,15 +86,13 @@ bool LIS3MDL::read() {
   uint8_t data[8];
   i2c_write_byte(LIS3MDL_REG_OUT_XL | 0x80);
   i2c_read_bytes(data, 8);
-  if(!i2c_pop_errors()) {
-    // Successful read
-    for(int i = 0; i < 3; i++)
-      this->mag[i] = (int16_t) ((data[2 * i + 1] << 8) | data[2 * i]);
-    this->should_reset = false;
-    return true;
-  }
-  // Failed read
-  return false;
+  if(i2c_pop_errors())
+    return false;
+  // Successful read
+  for(int i = 0; i < 3; i++)
+    this->mag[i] = (int16_t) ((data[2 * i + 1] << 8) | data[2 * i]);
+  this->should_reset = false;
+  return true;
 }
 
-// 
+//

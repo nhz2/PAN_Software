@@ -59,7 +59,7 @@ public:
   /*! Constructs a magnetometer on the specified wire and with the given
    *  address.
    */
-  LIS3MDL(i2c_t3 &i2c_wire, uint8_t mag_i2c_addr);
+  LIS3MDL(i2c_t3 &i2c_wire, uint8_t i2c_addr);
 
   /*! Sets and returns the current sample frequency. The default sample
    * frequency is 0.625 Hz.
@@ -111,11 +111,11 @@ private:
 
 /*!
  */
-class AccelGyro {
+class LSM6DS33 {
 
 public:
 
-  AccelGyro(i2c_t3 &i2c_wire);
+  LSM6DS33(i2c_t3 &i2c_wire, uint8_t i2c_addr);
 
 private:
 

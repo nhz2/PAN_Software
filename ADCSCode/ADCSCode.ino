@@ -8,7 +8,6 @@
 // Cornell University
 //
 
-#include <PololuIMU.hpp>
 #include <AdafruitADC.hpp>
 
 /*! Leave the macro VERBOSE defined to compile the verbose output functions and
@@ -148,6 +147,7 @@ void setup() {
   // TODO : Actual full flight code goes here
 
 #ifdef TESTING
+    break;
   }
 #endif
 }

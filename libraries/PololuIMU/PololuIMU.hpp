@@ -268,6 +268,8 @@ public:
   //
   // bool burst_read();
 
+  /*
+
   /*! gyroscope output data rate = 6660Hz*2^(-10+xl_odr)
   * (inclusive range from 1 to 8) cooresponding to 12.5 to 1660Hz
   */

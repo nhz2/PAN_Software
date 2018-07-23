@@ -10,12 +10,13 @@
 
 #include "AdafruitADC.hpp"
 
-ADS1115 adc(Wire, ADS1115_ADDR_VDD, 12);
+ADS1015 adc(Wire1, ADS1015::ADDR::SDA, 20);
 
 void setup() {
-  pinMode(12, INPUT);
+  pinMode(20, INPUT);
   Serial.begin(9600);
-  Wire.begin();
+  Serial.println("Starting");
+  Wire1.begin();
 }
 
 void loop() {

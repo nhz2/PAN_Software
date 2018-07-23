@@ -84,9 +84,9 @@ bool LIS3MDL::read() {
       return false;
   }
   // Set register and request data
-  uint8_t data[8];
+  uint8_t data[6];
   i2c_write_byte(LIS3MDL_REG_OUT_XL | 0x80);
-  i2c_read_bytes(data, 8);
+  i2c_read_bytes(data, 6);
   if(i2c_pop_errors())
     return false;
   // Successful read
@@ -95,7 +95,6 @@ bool LIS3MDL::read() {
   this->should_reset = false;
   return true;
 }
-
 
 LSM6DS33::LSM6DS33(i2c_t3 &i2c_wire, uint8_t i2c_addr, uint8_t g_odr, uint8_t xl_odr) : I2CDevice(i2c_wire, i2c_addr, 0) {
   this->powered_down = true;

@@ -4,7 +4,8 @@
 // Created by Kyle Krol (kpk63@cornell.edu) on 06/08/2018
 // Gyro and Accelerometer drivers created by Nathan Zimmerberg (nhz2@cornell.edu) on 07/10/2018
 //
-//using register list from //https://github.com/pololu/lsm6-arduino/blob/master/LSM6.h
+// using register list from https://github.com/pololu/lsm6-arduino/blob/master/LSM6.h
+//
 // Pathfinder for Autonomous Navigation
 // Space Systems Design Studio
 // Cornell University
@@ -266,8 +267,6 @@ public:
   // bool setup_burst();
   //
   // bool burst_read();
-
-  /*
 
   /*! gyroscope output data rate = 6660Hz*2^(-10+xl_odr)
   * (inclusive range from 1 to 8) cooresponding to 12.5 to 1660Hz

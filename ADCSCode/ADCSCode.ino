@@ -31,9 +31,6 @@
 /*! Sun sensor assembly code */
 namespace ssa {
 
-/*! Number of channels read every loop (legal values are 1, 2, 3, and 4) */
-#define SSA_CHANNELS_PER_READ 1
-
   /*! Defining the five analog to digital converters */
   ADS1015 adcs[5] = {
     ADS1015(Wire, ADS1015::ADDR::GND, 11),
@@ -50,7 +47,7 @@ namespace ssa {
   unsigned int broken[5] = { 0 };
 
   /*! Most recently read ADC channel */
-  unsigned int last_channel = 0;
+  unsigned int next_channel = 0;
 
 #ifdef TESTING
   /*! Outputs a portion of a csv line containing all 20 analog reads and the
@@ -96,16 +93,15 @@ namespace ssa {
    *  otherwise. The sun vector is written into the specified float array.
    */
   bool read(float *sun_vector) {
-    for(unsigned int i = 0; i != (last_channel + SSA_CHANNELS_PER_READ) % 4; i = (i + 1) % 4) {
-      for(unsigned int j = 0; j < 5; j++)
-        adcs[j].start_read(i);
-      for(unsigned int j = 0; j < 5; j++) {
-        if(!adcs[j].end_read(data[4 * j + i])) {
-          data[4 * j + i] = 0;
-          broken[j]++;
-        }
+    for(unsigned int j = 0; j < 5; j++)
+      adcs[j].start_read(next_channel);
+    for(unsigned int j = 0; j < 5; j++) {
+      if(!adcs[j].end_read(data[4 * j + next_channel])) {
+        data[4 * j + next_channel] = 0;
+        broken[j]++;
       }
     }
+    next_channel = (next_channel + 1) % 4;
     // TODO : Actually determine data and its usefulness
     sun_vector[0] = 0.0f;
     sun_vector[1] = 0.0f;
@@ -114,6 +110,13 @@ namespace ssa {
   }
 
 }
+
+#ifdef TESTING
+void flush_serial() {
+  while(Serial.available())
+    Serial.read();
+}
+#endif
 
 void setup() {
   Wire.begin();
@@ -126,20 +129,22 @@ void setup() {
   // Testing relies on a user input of a test code (see switch statement)
   while(Serial.available() < 1);
   unsigned char code = Serial.read();
+  flush_serial();
   switch (code) {
     case 'a': // SSA assembly test alone
       ssa::init();
-      Serial.println(String(millis()) + ",");
+      Serial.print(String(millis()) + ",");
       ssa::verbose_output();
       Serial.println();
-      while(true) {
+      while(!Serial.available()) {
         float v[3];
         ssa::read(v);
-        Serial.println(String(millis()) + ",");
+        Serial.print(String(millis()) + ",");
         ssa::verbose_output();
         Serial.println();
-        delay(20);
+        delay(500);
       }
+      flush_serial();
       break;
     default:
 #endif
@@ -149,6 +154,7 @@ void setup() {
 #ifdef TESTING
     break;
   }
+  setup();
 #endif
 }
 

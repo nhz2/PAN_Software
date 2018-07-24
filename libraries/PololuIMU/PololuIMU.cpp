@@ -208,7 +208,7 @@ bool LSM6DS33::power_up(){
     (uint8_t)(xl_odr<<4),
     (uint8_t)((g_odr<<4)+ ( g_fs?((g_fs-1)<<2): 2 )),
     (uint8_t)((bdu<<6)+4),
-    (uint8_t)((drdy_mask<<3))
+    (uint8_t)((drdy_mask<<3)),
     (uint8_t)((g_burst<<6))
   };
   i2c_pop_errors();

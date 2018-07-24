@@ -46,10 +46,12 @@ void flush_serial() {
 
 void setup() {
   Wire.begin();
+  Wire.setSDA(18);
+  Wire.setSCL(19);
   Wire1.begin();
 #ifdef VERBOSE
   // Start serial port for verbose output
-  Serial.begin(9600);
+  Serial.begin(921600);
 #endif
 #ifdef TESTING
   // Testing relies on a user input of a test code (see switch statement)
@@ -74,21 +76,27 @@ void setup() {
       break;
     }
     case 'g':{ // Gyro test alone
-        LSM6DS33 mygyro(Wire,DS33_SA0_LOW_ADDRESS,4,4);
+        LSM6DS33 mygyro(Wire,DS33_SA0_HIGH_ADDRESS,8,8);
         mygyro.i2c_set_timeout(1000);
         delay(50);
         mygyro.power_up();
+        mygyro.setup_gburst();
         delay(100);
         while(!Serial.available()) {
-          mygyro.read();
+          mygyro.read_gburst();
+
           Serial.print(String(millis()) + ",");
           Serial.print(String(mygyro.g_x())+","+
                        String(mygyro.g_y())+","+
                        String(mygyro.g_z()));
           Serial.println();
-          delay(96);
+          Serial.flush();
+
+          //delay(1);
+
         }
         flush_serial();
+
         break;
     }
     default:{

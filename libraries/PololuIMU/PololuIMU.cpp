@@ -204,10 +204,10 @@ void LSM6DS33::self_test() {
 bool LSM6DS33::power_up(){
   uint8_t data[]= {
     CTRL1_XL,
-    xl_odr<<4,
-    (g_odr<<4)+ ( g_fs?((g_fs-1)<<2): 2 ),
-    (bdu<<6)+4,
-    drdy_mask<<3
+    (uint8_t)(xl_odr<<4),
+    (uint8_t)((g_odr<<4)+ ( g_fs?((g_fs-1)<<2): 2 )),
+    (uint8_t)((bdu<<6)+4),
+    (uint8_t)((drdy_mask<<3))
   };
   i2c_pop_errors();
   i2c_write_bytes(data,5);
@@ -222,7 +222,7 @@ bool LSM6DS33::power_down(){
   uint8_t data[]= {
     CTRL1_XL,
     0x00,
-    0x00+ ( g_fs?((g_fs-1)<<2): 2 ),
+    (uint8_t)(0x00+ ( g_fs?((g_fs-1)<<2): 2 )),
   };
   i2c_pop_errors();
   i2c_write_bytes(data,3);

@@ -9,6 +9,7 @@
 //
 
 #include <AdafruitADC.hpp>
+#include <PololuIMU.hpp>
 
 /*! Leave the macro VERBOSE defined to compile the verbose output functions and
  *  enable verbose output during normal operation.
@@ -28,88 +29,10 @@
 #endif
 #endif
 
-/*! Sun sensor assembly code */
-namespace ssa {
-
-  /*! Defining the five analog to digital converters */
-  ADS1015 adcs[5] = {
-    ADS1015(Wire, ADS1015::ADDR::GND, 11),
-    ADS1015(Wire, ADS1015::ADDR::VDD, 12),
-    ADS1015(Wire, ADS1015::ADDR::SCL, 14),
-    ADS1015(Wire1, ADS1015::ADDR::VDD, 13),
-    ADS1015(Wire1, ADS1015::ADDR::SDA, 20)
-  };
-
-  /*! Defining the 20 dimensional vector for all the analog reads */
-  int16_t data[20] = { 0 };
-
-  /*! Defining the broken flags array (one failure counter for each ADC) */
-  unsigned int broken[5] = { 0 };
-
-  /*! Most recently read ADC channel */
-  unsigned int next_channel = 0;
-
-#ifdef TESTING
-  /*! Outputs a portion of a csv line containing all 20 analog reads and the
-   *  broken flags array. The following format is used:
-   *    data[0],data[1],...,data[19],broken[0],...,broken[4]
-   */
-  void verbose_output() {
-    for(unsigned int i = 0; i < 20; i++) {
-      Serial.print(data[i]);
-      Serial.print(',');
-    }
-    for(unsigned int i = 0; i < 4; i++) {
-      Serial.print(broken[i]);
-      Serial.print(',');
-    }
-    Serial.print(broken[4]);
-  }
-#endif
-
-  /*! Configures and reads initial data from all of the ADCS */
-  void init() {
-    // Write configuration settings
-    for(unsigned int i = 0; i < 5; i++) {
-      adcs[i].set_sample_rate(ADS1015::SR::SPS_920);
-      adcs[i].set_gain(ADS1015::GAIN::ONE);
-    }
-    // Read all ADC channels
-    for(unsigned int i = 0; i < 3; i++) {
-      for(unsigned int j = 0; j < 5; j++)
-        adcs[j].start_read(i);
-      for(unsigned int j = 0; j < 5; j++) {
-        // Attempt first read
-        if(!adcs[j].end_read(data[4 * j + i])) {
-          data[4 * j + i] = 0;
-          broken[j]++;
-        }
-      }
-    }
-  }
-
-  /*! Reads the sun sensors and determines a new sun vector. The function
-   *  returns true if the sun vector should be considered good data and false
-   *  otherwise. The sun vector is written into the specified float array.
-   */
-  bool read(float *sun_vector) {
-    for(unsigned int j = 0; j < 5; j++)
-      adcs[j].start_read(next_channel);
-    for(unsigned int j = 0; j < 5; j++) {
-      if(!adcs[j].end_read(data[4 * j + next_channel])) {
-        data[4 * j + next_channel] = 0;
-        broken[j]++;
-      }
-    }
-    next_channel = (next_channel + 1) % 4;
-    // TODO : Actually determine data and its usefulness
-    sun_vector[0] = 0.0f;
-    sun_vector[1] = 0.0f;
-    sun_vector[2] = 1.0f;
-    return false;
-  }
-
-}
+/*! Sun sensor assembly code included - note this needs to be done after the
+ *  TESTING and VERBOSE macros are defined.
+ */
+#include "ssa.hpp"
 
 #ifdef TESTING
 void flush_serial() {

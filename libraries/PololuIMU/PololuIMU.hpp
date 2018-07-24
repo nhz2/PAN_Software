@@ -222,7 +222,8 @@ public:
    * order is + gyro, - gyro, + xl, - xl
    */
   void self_test();
-
+  void xlselftest_helper(uint8_t testval);
+  void gyroselftest_helper(uint8_t testval);
   /*if sent i2c message to start up g and xl in high performance mode with set cfg
   wait about 20ms after booting before calling this function
   wait about 80ms after calling this function before reading
@@ -267,8 +268,6 @@ public:
   // bool setup_burst();
   //
   // bool burst_read();
-
-  /*
 
   /*! gyroscope output data rate = 6660Hz*2^(-10+xl_odr)
   * (inclusive range from 1 to 8) cooresponding to 12.5 to 1660Hz

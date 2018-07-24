@@ -109,7 +109,7 @@ LSM6DS33::LSM6DS33(i2c_t3 &i2c_wire, uint8_t i2c_addr, uint8_t g_odr, uint8_t xl
 
 void LSM6DS33::writeReg(regAddr reg, uint8_t value){
     uint8_t data[]= {reg,value};
-    i2c_write_bytes(&data,2);
+    i2c_write_bytes(data,2);
   }
 
 uint8_t LSM6DS33::readReg(regAddr reg){
@@ -119,21 +119,21 @@ uint8_t LSM6DS33::readReg(regAddr reg){
     return value;
   }
 
-LSM6DS33::gyroselftest_helper(uint8_t testval){
+void LSM6DS33::gyroselftest_helper(uint8_t testval){
   writeReg(CTRL1_XL, 0x00);
   writeReg(CTRL2_G, 0x5C);
   writeReg(CTRL3_C, 0x44);
   writeReg(CTRL4_C, 0x00);
   writeReg(CTRL5_C, 0x00);
-  writeReg(CTRL6_G, 0x00);
+  writeReg(CTRL6_C, 0x00);
   writeReg(CTRL7_G, 0x00);
   writeReg(CTRL8_XL, 0x00);
   writeReg(CTRL9_XL, 0x00);
   writeReg(CTRL10_C, 0x38);
 
   delay(800);
-  for(j= 0; j<2; j++){
-    while (!(2) & readReg(STATUS_REG)){}
+  for(int j= 0; j<2; j++){
+    while (!((2) & readReg(STATUS_REG))){}
     readReg(OUTX_H_G);
     readReg(OUTX_L_G);
     readReg(OUTY_H_G);
@@ -141,11 +141,11 @@ LSM6DS33::gyroselftest_helper(uint8_t testval){
     readReg(OUTZ_H_G);
     readReg(OUTZ_L_G);
 
-    for (i=0; i<5; i++){
-      while (!(2) & readReg(STATUS_REG)){}
-      Serial.println(((int)readReg(OUTX_H_G))<<8 + (int)readReg(OUTX_L_G));
-      Serial.println(((int)readReg(OUTY_H_G))<<8 + (int)readReg(OUTY_L_G));
-      Serial.println(((int)readReg(OUTZ_H_G))<<8 + (int)readReg(OUTZ_L_G));
+    for (int i=0; i<5; i++){
+      while (!((2) & readReg(STATUS_REG))){}
+      Serial.println((((int)readReg(OUTX_H_G))<<8) + (int)readReg(OUTX_L_G));
+      Serial.println((((int)readReg(OUTY_H_G))<<8) + (int)readReg(OUTY_L_G));
+      Serial.println((((int)readReg(OUTZ_H_G))<<8) + (int)readReg(OUTZ_L_G));
     }
 
     writeReg(CTRL5_C, testval);
@@ -157,21 +157,21 @@ LSM6DS33::gyroselftest_helper(uint8_t testval){
 
 }
 
-LSM6DS33::xlselftest_helper(uint8_t testval){
+void LSM6DS33::xlselftest_helper(uint8_t testval){
   writeReg(CTRL1_XL, 0x30);
   writeReg(CTRL2_G, 0x00);
   writeReg(CTRL3_C, 0x44);
   writeReg(CTRL4_C, 0x00);
   writeReg(CTRL5_C, 0x00);
-  writeReg(CTRL6_G, 0x00);
+  writeReg(CTRL6_C, 0x00);
   writeReg(CTRL7_G, 0x00);
   writeReg(CTRL8_XL, 0x00);
   writeReg(CTRL9_XL, 0x38);
   writeReg(CTRL10_C, 0x00);
 
   delay(200);
-  for(j= 0; j<2; j++){
-    while (!(1) & readReg(STATUS_REG)){}
+  for(int j= 0; j<2; j++){
+    while (!((1) & readReg(STATUS_REG))){}
     readReg(OUTX_H_XL);
     readReg(OUTX_L_XL);
     readReg(OUTY_H_XL);
@@ -179,11 +179,11 @@ LSM6DS33::xlselftest_helper(uint8_t testval){
     readReg(OUTZ_H_XL);
     readReg(OUTZ_L_XL);
 
-    for (i=0; i<5; i++){
-      while (!(1) & readReg(STATUS_REG)){}
-      Serial.println(((int)readReg(OUTX_H_XL))<<8 + (int)readReg(OUTX_L_XL));
-      Serial.println(((int)readReg(OUTY_H_XL))<<8 + (int)readReg(OUTY_L_XL));
-      Serial.println(((int)readReg(OUTZ_H_XL))<<8 + (int)readReg(OUTZ_L_XL));
+    for (int i=0; i<5; i++){
+      while (!((1) & readReg(STATUS_REG))){}
+      Serial.println((((int)readReg(OUTX_H_XL))<<8) + (int)readReg(OUTX_L_XL));
+      Serial.println((((int)readReg(OUTY_H_XL))<<8) + (int)readReg(OUTY_L_XL));
+      Serial.println((((int)readReg(OUTZ_H_XL))<<8) + (int)readReg(OUTZ_L_XL));
     }
 
     writeReg(CTRL5_C, testval);
@@ -194,7 +194,7 @@ LSM6DS33::xlselftest_helper(uint8_t testval){
   writeReg(CTRL5_C, 0x00);
 }
 
-LSM6DS33::self_test() {
+void LSM6DS33::self_test() {
   gyroselftest_helper(0x04);
   gyroselftest_helper(0x0C);
   xlselftest_helper(0x01);
@@ -205,12 +205,12 @@ bool LSM6DS33::power_up(){
   uint8_t data[]= {
     CTRL1_XL,
     xl_odr<<4,
-    g_odr<<4+ ( g_fs?((g_fs-1)<<2): 2 ),
-    bdu<<6+4,
+    (g_odr<<4)+ ( g_fs?((g_fs-1)<<2): 2 ),
+    (bdu<<6)+4,
     drdy_mask<<3
   };
   i2c_pop_errors();
-  i2c_write_bytes(&data,5);
+  i2c_write_bytes(data,5);
   // Process potential configuration errors
   if(i2c_pop_errors())
     return false;
@@ -225,7 +225,7 @@ bool LSM6DS33::power_down(){
     0x00+ ( g_fs?((g_fs-1)<<2): 2 ),
   };
   i2c_pop_errors();
-  i2c_write_bytes(&data,3);
+  i2c_write_bytes(data,3);
   // Process potential configuration errors
   if(i2c_pop_errors())
     return false;
@@ -282,13 +282,13 @@ bool LSM6DS33::read(){
   if(i2c_pop_errors())
     return false;
   // Successful read
-  status= data[0]
-  tempout= (((int16_t)data[2])<<8) + ((int16_t)data[1])
-  for (i=0; i<3; i++){
-    gout[i]= (((int16_t)data[2*i+4])<<8) + ((int16_t)data[2*i+3])
+  status= data[0];
+  tempout= (((int16_t)data[2])<<8) + ((int16_t)data[1]);
+  for (int i=0; i<3; i++){
+    gout[i]= (((int16_t)data[2*i+4])<<8) + ((int16_t)data[2*i+3]);
   }
-  for (i=0; i<3; i++){
-    xlout[i]= (((int16_t)data[2*i+10])<<8) + ((int16_t)data[2*i+9])
+  for (int i=0; i<3; i++){
+    xlout[i]= (((int16_t)data[2*i+10])<<8) + ((int16_t)data[2*i+9]);
   }
   return true;
 }
@@ -301,11 +301,11 @@ void LSM6DS33::set_g_odr(uint8_t odr){
   g_odr= odr;
 }
 uint8_t LSM6DS33::get_g_odr() const{
-  return g_ord;
+  return g_odr;
 }
 
 void LSM6DS33::set_xl_odr(uint8_t odr){
-  xl_odr= ord;
+  xl_odr= odr;
 }
 uint8_t LSM6DS33::get_xl_odr() const{
   return xl_odr;

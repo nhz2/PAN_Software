@@ -209,6 +209,7 @@ public:
       sensors are powered down
       drdy_mask is on
       bdu is on
+      g_burst is off
    inputs:
    *   gyroscope output data rate = 6660Hz*2^(-10+xl_odr)
    *    (inclusive range from 1 to 8) cooresponding to 12.5 to 1660Hz
@@ -264,10 +265,13 @@ public:
   // bool setup_fifo();
   //
   // bool read_fifo();
-  //
-  // bool setup_burst();
-  //
-  // bool burst_read();
+  /* if setup burst reading for the gyroscope*/
+  bool setup_gburst();
+  /* if stop burst reading for the gyroscope*/
+  bool stop_gburst();
+  /*if updated gyroscope data
+      much faster than normal read, 16 bytes vs 6 bytes*/
+  bool read_gburst();
 
   /*! gyroscope output data rate = 6660Hz*2^(-10+xl_odr)
   * (inclusive range from 1 to 8) cooresponding to 12.5 to 1660Hz
@@ -289,6 +293,9 @@ public:
   /*! is block update feature on, highly recommended to be on*/
   void set_bdu(bool bdu);
   bool get_bdu() const;
+
+  /*! is gyroscope burst on*/
+  bool get_g_burst() const;
 
   /*! is drdy_mask on*/
   void set_drdy_mask(bool drdy_mask);
@@ -357,6 +364,8 @@ private:
   bool drdy_mask;
   /*! is block update feature on*/
   bool bdu;
+  /*! is gyroscope burst on*/
+  bool g_burst;
   /*! is fifo on, either bypass or continuous*/
   // bool fifo
   // /*! fifo gyroscope data decimation factors 0 means not in fifo

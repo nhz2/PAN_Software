@@ -97,14 +97,15 @@ bool LIS3MDL::read() {
 }
 
 LSM6DS33::LSM6DS33(i2c_t3 &i2c_wire, uint8_t i2c_addr, uint8_t g_odr, uint8_t xl_odr) : I2CDevice(i2c_wire, i2c_addr, 0) {
-  this->powered_down = true;
-  this->g_odr = g_odr;
-  this->xl_odr = xl_odr;
-  this->g_fs = 0;
-  this->drdy_mask = true;
-  this->bdu = true;
-  this->whoami = 0;
-  this->status = 0;
+  this->powered_down= true;
+  this->g_odr= g_odr;
+  this->xl_odr= xl_odr;
+  this->g_fs= 0;
+  this->drdy_mask= true;
+  this->bdu= true;
+  this->whoami= 0;
+  this->status= 0;
+  this->g_burst= false;
   }
 
 void LSM6DS33::writeReg(regAddr reg, uint8_t value){
@@ -208,6 +209,7 @@ bool LSM6DS33::power_up(){
     (uint8_t)((g_odr<<4)+ ( g_fs?((g_fs-1)<<2): 2 )),
     (uint8_t)((bdu<<6)+4),
     (uint8_t)((drdy_mask<<3))
+    (uint8_t)((g_burst<<6))
   };
   i2c_pop_errors();
   i2c_write_bytes(data,5);
@@ -271,6 +273,39 @@ bool LSM6DS33::update_cfg(){
   return power_up();
 }
 
+bool LSM6DS33::setup_gburst(){
+  i2c_pop_errors();
+  writeReg(CTRL5_C,1<<6);
+  i2c_write_byte(OUTX_L_G);
+  if(i2c_pop_errors())
+    return false;
+  g_burst= true;
+
+  return true;
+}
+
+bool LSM6DS33::stop_gburst(){
+  i2c_pop_errors();
+  writeReg(CTRL5_C,0x00);
+  if(i2c_pop_errors())
+    return false;
+  g_burst= false;
+  return true;
+}
+
+bool LSM6DS33::read_gburst(){
+  i2c_pop_errors();
+  uint8_t data[6];
+  i2c_read_bytes(data, 6);
+  if(i2c_pop_errors())
+    return false;
+  // Successful read
+  for (int i=0; i<3; i++){
+    gout[i]= (((int16_t)data[2*i+1])<<8) + ((int16_t)data[2*i]);
+  }
+  return true;
+}
+
 bool LSM6DS33::read(){
   i2c_pop_errors();
   whoami= readReg(WHO_AM_I);
@@ -323,6 +358,10 @@ void LSM6DS33::set_bdu(bool bdu){
 }
 bool LSM6DS33::get_bdu() const{
   return bdu;
+}
+
+bool LSM6DS33::get_g_burst() const{
+  return g_burst;
 }
 
 void LSM6DS33::set_drdy_mask(bool drdy_mask){

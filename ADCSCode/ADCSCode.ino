@@ -54,7 +54,7 @@ void setup() {
   unsigned char code = Serial.read();
   flush_serial();
   switch (code) {
-    case 'a': // SSA assembly test alone
+    case 'a':{ // SSA assembly test alone
       ssa::init();
       Serial.print(String(millis()) + ",");
       ssa::verbose_output();
@@ -69,27 +69,28 @@ void setup() {
       }
       flush_serial();
       break;
-
-      case 'g': // Gyro test alone
+    }
+    case 'g':{ // Gyro test alone
         LSM6DS33 mygyro(Wire,DS33_SA0_LOW_ADDRESS,4,4);
         mygyro.i2c_set_timeout(1000);
         delay(50);
         mygyro.power_up();
         delay(100);
-        mygyro.read();
-        Serial.print(String(millis()) + ",");
-        Serial.print(String(g_x())+","+String(g_y())+","+String(g_z())
-        Serial.println();
         while(!Serial.available()) {
           mygyro.read();
           Serial.print(String(millis()) + ",");
-          Serial.print(String(g_x())+","+String(g_y())+","+String(g_z())
+          Serial.print(String(mygyro.g_x())+","+
+                       String(mygyro.g_y())+","+
+                       String(mygyro.g_z()));
           Serial.println();
           delay(96);
         }
         flush_serial();
         break;
-    default:
+    }
+    default:{
+        break;
+    }
 #endif
 
   // TODO : Actual full flight code goes here

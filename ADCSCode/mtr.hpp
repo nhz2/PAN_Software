@@ -22,12 +22,12 @@ enum MTR_OPERATION {
   FORWARD,
   REVERSE,
   CONTROL
-}
+};
 
 /*! Namespace for magnetic torque rod related things */
 namespace mtr {
 
-  
+
 
 }
 

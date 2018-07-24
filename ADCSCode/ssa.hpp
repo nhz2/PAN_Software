@@ -33,28 +33,17 @@ namespace ssa {
   /*! Defining the five analog to digital converters. The address values are
    *  subject to change.
    */
-  ADS1015 adcs[5] = {
-    ADS1015(Wire,  ADS1015::ADDR::GND, 11),
-    ADS1015(Wire,  ADS1015::ADDR::VDD, 12),
-    ADS1015(Wire,  ADS1015::ADDR::SCL, 14),
-    ADS1015(Wire1, ADS1015::ADDR::VDD, 13),
-    ADS1015(Wire1, ADS1015::ADDR::SDA, 20)
-  };
+  extern ADS1015 adcs[5];
 
   /*! 20 entry 16 bit signed integer array to store raw ADC reads */
-  int16_t raw_data[20] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-  };
+  extern int16_t raw_data[20];
 
   /*! Tracks consecutive failed I2C communications on behalf of each ADC - i.e.
    *  once a proper communication is made, it's broken value is set back to 0.
    *  An entire ADC will be ignored if it fails SSA_IGNORE_ON_READS consecutive
    *  communication attempts.
    */
-  unsigned int consec_err[5] = {
-    0, 0, 0, 0, 0
-  };
+  extern unsigned int consec_err[5];
 
   /*! Initiates communication with the ADCs and takes initial data on all
    *  channels. If an ADC communication fails, it's consec_err count is

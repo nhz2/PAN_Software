@@ -12,6 +12,23 @@
 
 #include "ssa.hpp"
 
+ADS1015 ssa::adcs[5] = {
+  ADS1015(Wire,  ADS1015::ADDR::GND, 11),
+  ADS1015(Wire,  ADS1015::ADDR::VDD, 12),
+  ADS1015(Wire,  ADS1015::ADDR::SCL, 14),
+  ADS1015(Wire1, ADS1015::ADDR::VDD, 13),
+  ADS1015(Wire1, ADS1015::ADDR::SDA, 20)
+};
+
+int16_t ssa::raw_data[20] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+unsigned int ssa::consec_err[5] = {
+  0, 0, 0, 0, 0
+};
+
 /*! Helper function to access raw_data entries */
 inline int16_t &ref_raw_data(unsigned int adc, unsigned int line) {
   return ssa::raw_data[4 * adc + line];

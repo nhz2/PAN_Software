@@ -13,7 +13,7 @@
 #include "ssa.hpp"
 
 /*! Helper function to access raw_data entries */
-static inline int16_t &ref_raw_data(unsigned int adc, unsigned int line) {
+inline int16_t &ref_raw_data(unsigned int adc, unsigned int line) {
   return ssa::raw_data[4 * adc + line];
 }
 

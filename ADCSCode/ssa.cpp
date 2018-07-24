@@ -14,13 +14,13 @@
 
 /*! Helper function to access raw_data entries */
 static inline int16_t &ref_raw_data(unsigned int adc, unsigned int line) {
-  return raw_data[4 * adc + line];
+  return ssa::raw_data[4 * adc + line];
 }
 
 /*! Specifies the next line of the ADCs that should be read by read */
 static unsigned int next_line;
 
-ssa::init() {
+void ssa::init() {
   // Congigure the ADCs
   for(unsigned int i = 0; i < 5; i++) {
     adcs[i].set_sample_rate(ADS1015::SR::SPS_920);
@@ -43,7 +43,7 @@ ssa::init() {
   next_line = 0;
 }
 
-ssa::read(float *sun_vector) {
+bool ssa::read(float *sun_vector) {
   // Generate a list of which ADCs to read
   std::vector<unsigned int> adc_vec;
   adc_vec.reserve(5);

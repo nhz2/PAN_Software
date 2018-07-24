@@ -29,9 +29,12 @@
 #endif
 #endif
 
-/*! Sun sensor assembly code included - note this needs to be done after the
- *  TESTING and VERBOSE macros are defined.
+/*! Code included for the sun sensor assembly, magnetic torque rods, and
+ *  reaction wheels. Note these files need to be included after the definitions
+ *  of the TESTING and VERBOSE macros in order for them to have the intended
+ *  affect.
  */
+#include "mtr.hpp"
 #include "ssa.hpp"
 
 #ifdef TESTING

@@ -8,6 +8,8 @@
 // Cornell University
 //
 
+#include <vector>
+
 #include "ssa.hpp"
 
 /*! Helper function to access raw_data entries */
@@ -33,7 +35,7 @@ ssa::init() {
     for(unsigned int adc = 0; adc < 5; adc++) {
       if(!adcs[adc].end_read(ref_raw_data(adc, line))) {
         ref_raw_data(adc, line) = 0;
-        broken[adc]++;
+        consec_err[adc]++;
       }
     }
   }
@@ -46,7 +48,7 @@ ssa::read(float *sun_vector) {
   std::vector<unsigned int> adc_vec;
   adc_vec.reserve(5);
   for(unsigned int i = 0; i < 5; i++)
-    if(broken[i] < 100)
+    if(consec_err[i] < 100)
       adc_vec.push_back(i);
   // Iterate through the functioning ADCs
   for(unsigned int adc : adc_vec)
@@ -54,7 +56,7 @@ ssa::read(float *sun_vector) {
   for(unsigned int adc : adc_vec) {
     if(!adcs[adc].end_read(ref_raw_data(adc, next_line))) {
       ref_raw_data(adc, next_line) = 0;
-      broken[adc]++;
+      consec_err[adc]++;
     }
   }
   // Increment the next line

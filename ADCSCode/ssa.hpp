@@ -76,18 +76,18 @@ namespace ssa {
 #ifdef VERBOSE
   /*! Outputs a portion of a csv line containing all 20 analog reads and the
    *  broken flags array. The following format is used:
-   *    data[0],data[1],...,data[19],broken[0],...,broken[4]
+   *    raw_data[0],raw_data[1],...,raw_data[19],consec_err[0],...,consec_err[4]
    */
   void verbose_output() {
     for(unsigned int i = 0; i < 20; i++) {
-      Serial.print(data[i]);
+      Serial.print(raw_data[i]);
       Serial.print(',');
     }
     for(unsigned int i = 0; i < 4; i++) {
-      Serial.print(broken[i]);
+      Serial.print(consec_err[i]);
       Serial.print(',');
     }
-    Serial.print(broken[4]);
+    Serial.print(consec_err[4]);
   }
 #endif
 

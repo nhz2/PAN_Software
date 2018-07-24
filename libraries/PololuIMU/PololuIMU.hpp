@@ -125,7 +125,7 @@ private:
 
 /*!
  */
-class LSM6DS33 {
+class LSM6DS33 : public I2CDevice{
   // register addresses from
   //https://github.com/pololu/lsm6-arduino/blob/master/LSM6.h
     enum regAddr

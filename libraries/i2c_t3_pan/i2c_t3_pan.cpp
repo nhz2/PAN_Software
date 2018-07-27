@@ -26,7 +26,7 @@
 #if defined(__MK20DX128__) || defined(__MK20DX256__) || defined(__MKL26Z64__) || \
     defined(__MK64FX512__) || defined(__MK66FX1M0__) // 3.0/3.1-3.2/LC/3.5/3.6
 
-#include "i2c_t3.h"
+#include "i2c_t3_pan.h"
 
 // ------------------------------------------------------------------------------------------------------
 // Static inits

@@ -8,18 +8,13 @@
 // Cornell University
 //
 
+/*
+ */
+
 #ifndef LIBRARIES_I2CDEVICE_I2CDEVICE_HPP
 #define LIBRARIES_I2CDEVICE_I2CDEVICE_HPP
 
 #include <i2c_t3.h>
-
-/*! i2c error code bit masks */
-#define I2C_ERR_MASK_TIMEOUT       0b00001;
-#define I2C_ERR_MASK_TRANSMISSION  0b11110;
-#define I2C_ERR_MASK_DATA_TOO_LONG 0b00010;
-#define I2C_ERR_MASK_NACK_ON_ADDR  0b00100;
-#define I2C_ERR_MASK_NACK_ON_DATA  0b01000;
-#define I2C_ERR_MASK_OTHER         0b10000;
 
 class I2CDevice {
 
@@ -28,8 +23,14 @@ public:
   /*! Get and set the i2c response timeout in milliseconds. A timeout value of
    *  zero means no timeout.
    */
-  void i2c_set_timeout(unsigned long i2c_timeout);
-  uint8_t i2c_get_timeout() const;
+
+  inline void i2c_set_timeout(unsigned long i2c_timeout) {
+    this->i2c_timeout = i2c_timeout;
+  }
+
+  inline uint8_t i2c_get_timeout() const {
+    return this->i2c_timeout;
+  }
 
 protected:
 
@@ -39,15 +40,63 @@ protected:
   /*! Constructor with user specified timeout value */
   I2CDevice(i2c_t3 &i2c_wire, uint8_t i2c_addr, unsigned long i2c_timeout);
 
-  /*! This function returns the cummulative error with this i2c device sense
-   *  the last call to this function. To extract specific errors, and the
-   *  returned error code with the defined error masks. For more specifics on
-   *  the error types see the class documentation.
+  /*! Returns whether or not the device has experienced an error sense the last
+   *  call to pop_errors. The error history parameter is then set back to false.
    */
-  unsigned int i2c_pop_errors();
+  inline bool i2c_pop_errors() {
+    bool temp = this->i2c_error;
+    this->i2c_error = false;
+    return temp;
+  }
 
-  /*! Identical to i2c_pop_errors() except the error parameter isn't zeroed */
-  unsigned int i2c_peek_errors() const;
+  /*! Peeks the error history parameter */
+  inline bool i2c_peek_errors() const {
+    return this->i2c_error;
+  }
+
+  /*! Begins an i2c transmission on the current bus */
+  inline void i2c_begin_transmission() {
+    this->i2c_wire.beginTransmission(this->i2c_addr);
+  }
+
+  /*! Ends the transmission on this bus */
+  inline void i2c_end_transmission(i2c_stop s = I2C_STOP) {
+    this->i2c_error |= this->i2c_wire.endTransmission(s, this->i2c_timeout);
+  }
+
+  /*! Sends the transmission on this bus (non-blocking version of above) */
+  inline void i2c_send_transmission(i2c_stop s = I2C_STOP) {
+    this->i2c_wire.sendTransmission(s);
+  }
+
+  /*! Sets the callback for a completed transmission. Note this affects the
+   *  entire bus.
+   */
+  inline void i2c_on_transmission_done(void *f()) {
+    this->i2c_wire.onTransmitDone(f);
+  }
+
+  /*! Request len bytes of data on this bus */
+  inline void i2c_request_from(uint8_t len, i2c_stop s = I2C_STOP) {
+    this->i2c_error |= this->i2c_wire.requestFrom(this->i2c_addr, len, s, this->i2c_timeout);
+  }
+
+  /*! Sends a data request on this bus (non-blocking version of above) */
+  inline void i2c_send_request(uint8_t len, i2c_stop s = I2C_STOP) {
+    this->i2c_wire.sendRequest(this->i2c_addr, len, s);
+  }
+
+  /*! Sets the callback for a completed request. Note this affects the entire
+   *  bus.
+   */
+  inline void i2c_on_request_done(void *f()) {
+    this->i2c_wire->onReqFromDone(f);
+  }
+
+  /*! Waits for the completion of a non-blocking task on this bus */
+  inline void i2c_finish() {
+    this->i2c_error |=
+  }
 
   /*! Write the specified byte array to the i2c device. No data request is
    * made. Check i2c_peek_errors() or i2c_pop_errors() for potential errors.
@@ -55,7 +104,9 @@ protected:
   void i2c_write_bytes(uint8_t const *data, uint8_t len);
 
   /*! Identical to the following call: i2c_write_bytes(&data, 1) */
-  void i2c_write_byte(uint8_t const &data);
+  inline void i2c_write_byte(uint8_t const &data) {
+    this->i2c_write_bytes(&data, 1);
+  }
 
   /*! Reads the requested number of bytes over i2c into the specified byte
    *  array. Check i2c_peek_errors() or i2c_pop_errors() for potential errors.
@@ -64,7 +115,9 @@ protected:
   void i2c_read_bytes(uint8_t *data, uint8_t len);
 
   /*! Identical to the following call: i2c_read_bytes(&data, 1) */
-  void i2c_read_byte(uint8_t &data);
+  inline void i2c_read_byte(uint8_t &data) {
+    this->i2c_read_bytes(&data, 1);
+  }
 
 private:
 
@@ -78,7 +131,7 @@ private:
   unsigned long i2c_timeout;
 
   /*! Cummulative i2c error */
-  unsigned int i2c_error;
+  bool i2c_error;
 
 };
 

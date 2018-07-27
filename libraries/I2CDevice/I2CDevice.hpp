@@ -8,13 +8,13 @@
 // Cornell University
 //
 
-/*
+/* 
  */
 
 #ifndef LIBRARIES_I2CDEVICE_I2CDEVICE_HPP
 #define LIBRARIES_I2CDEVICE_I2CDEVICE_HPP
 
-#include <i2c_t3.h>
+#include <i2c_t3_pan.h>
 
 class I2CDevice {
 
@@ -75,12 +75,12 @@ protected:
   }
 
   /*! Request len bytes of data on this bus */
-  inline void i2c_request_from(uint8_t len, i2c_stop s = I2C_STOP) {
+  inline void i2c_request_from(unsigned int len, i2c_stop s = I2C_STOP) {
     this->i2c_error |= this->i2c_wire.requestFrom(this->i2c_addr, len, s, this->i2c_timeout);
   }
 
   /*! Sends a data request on this bus (non-blocking version of above) */
-  inline void i2c_send_request(uint8_t len, i2c_stop s = I2C_STOP) {
+  inline void i2c_send_request(unsigned int len, i2c_stop s = I2C_STOP) {
     this->i2c_wire.sendRequest(this->i2c_addr, len, s);
   }
 
@@ -99,6 +99,11 @@ protected:
   /*! Writes bytes to the outgoing buffer */
   inline void i2c_write(uint8_t const *data, unsigned int len) {
     this->i2c_wire.write(data, len);
+  }
+
+  /*! Reads a byte from the incoming buffer */
+  inline uint8_t i2c_read() {
+    return this->i2c_wire.read();
   }
 
   /*! Waits for the completion of a non-blocking task on this bus */

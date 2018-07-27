@@ -8,6 +8,7 @@
 // Cornell University
 //
 
+#include <i2c_t3_pan.h>
 #include <AdafruitADC.hpp>
 #include <PololuIMU.hpp>
 

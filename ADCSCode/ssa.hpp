@@ -10,8 +10,7 @@
 
 /* This header file contains function declarations for the sun sensor assembly
  * incorporated into the ADCS system. The header is designed to be used with
- * the TESTING and VERBOSE macros as defined in ADCSCode/ADCSCode.ino. See
- * ssa.cpp for the function implementations.
+ * the TESTING and VERBOSE macros as defined in ADCSCode/ADCSCode.ino.
  */
 
 #ifndef ADCSCODE_SSA_HPP

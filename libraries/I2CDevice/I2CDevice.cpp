@@ -22,17 +22,7 @@ I2CDevice::I2CDevice(i2c_t3 &i2c_wire, uint8_t i2c_addr, unsigned long i2c_timeo
   this->i2c_error = 0;
 }
 
-bool I2CDevice::i2c_pop_errors() {
-  bool temp = this->i2c_error;
-  this->i2c_error = false;
-  return temp;
-}
-
-bool I2CDevice::i2c_peek_errors() const {
-  return this->i2c_error;
-}
-
-void I2CDevice::i2c_write_bytes(uint8_t const *data, uint8_t len) {
+void I2CDevice::i2c_write_bytes(uint8_t const *data, unsigned int len) {
   // Write data over i2c
   this->i2c_wire.beginTransmission(this->i2c_addr);
   this->i2c_wire.write(data, len);
@@ -40,10 +30,10 @@ void I2CDevice::i2c_write_bytes(uint8_t const *data, uint8_t len) {
   this->i2c_error |= this->i2c_wire.endTransmission(I2C_STOP, this->i2c_timeout);
 }
 
-void I2CDevice::i2c_read_bytes(uint8_t *data, uint8_t len) {
+void I2CDevice::i2c_read_bytes(uint8_t *data, unsigned int len) {
   // Request data
   this->i2c_error |= ~this->i2c_wire.requestFrom(this->i2c_addr, len, I2C_STOP, this->i2c_timeout);
   // Read data
-  for(int i = 0; i < len; i++)
+  for(unsigned int i = 0; i < len; i++)
     data[i] = this->i2c_wire.read();
 }

@@ -20,14 +20,12 @@ class I2CDevice {
 
 public:
 
-  /*! Get and set the i2c response timeout in milliseconds. A timeout value of
-   *  zero means no timeout.
-   */
-
+   /*! Set this device's I2C timeout in milliseconds */
   inline void i2c_set_timeout(unsigned long i2c_timeout) {
     this->i2c_timeout = i2c_timeout;
   }
 
+  /*! Returns this devices I2C timeout in milliseconds */
   inline uint8_t i2c_get_timeout() const {
     return this->i2c_timeout;
   }
@@ -72,7 +70,7 @@ protected:
   /*! Sets the callback for a completed transmission. Note this affects the
    *  entire bus.
    */
-  inline void i2c_on_transmission_done(void *f()) {
+  inline void i2c_on_transmission_done(void (*f)()) {
     this->i2c_wire.onTransmitDone(f);
   }
 
@@ -89,21 +87,31 @@ protected:
   /*! Sets the callback for a completed request. Note this affects the entire
    *  bus.
    */
-  inline void i2c_on_request_done(void *f()) {
-    this->i2c_wire->onReqFromDone(f);
+  inline void i2c_on_request_done(void (*f)()) {
+    this->i2c_wire.onReqFromDone(f);
+  }
+
+  /*! Writes a byte to the outgoing buffer */
+  inline void i2c_write(uint8_t data) {
+    this->i2c_wire.write(data);
+  }
+
+  /*! Writes bytes to the outgoing buffer */
+  inline void i2c_write(uint8_t const *data, unsigned int len) {
+    this->i2c_wire.write(data, len);
   }
 
   /*! Waits for the completion of a non-blocking task on this bus */
   inline void i2c_finish() {
-    this->i2c_error |=
+    this->i2c_error |= this->i2c_wire.finish(this->i2c_timeout);
   }
 
   /*! Write the specified byte array to the i2c device. No data request is
-   * made. Check i2c_peek_errors() or i2c_pop_errors() for potential errors.
+   *  made. Check i2c_peek_errors() or i2c_pop_errors() for potential errors.
    */
-  void i2c_write_bytes(uint8_t const *data, uint8_t len);
+  void i2c_write_bytes(uint8_t const *data, unsigned int len);
 
-  /*! Identical to the following call: i2c_write_bytes(&data, 1) */
+  /*! Writes a single byte over i2c */
   inline void i2c_write_byte(uint8_t const &data) {
     this->i2c_write_bytes(&data, 1);
   }
@@ -112,9 +120,9 @@ protected:
    *  array. Check i2c_peek_errors() or i2c_pop_errors() for potential errors.
    *  If an error did occur, the integrity of the data read is not guaranteed.
    */
-  void i2c_read_bytes(uint8_t *data, uint8_t len);
+  void i2c_read_bytes(uint8_t *data, unsigned int len);
 
-  /*! Identical to the following call: i2c_read_bytes(&data, 1) */
+  /*! Reads a single byte over i2c */
   inline void i2c_read_byte(uint8_t &data) {
     this->i2c_read_bytes(&data, 1);
   }

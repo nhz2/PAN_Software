@@ -19,14 +19,6 @@ ADS1015::ADS1015(i2c_t3 &i2c_wire, ADDR i2c_addr, unsigned int alert_pin) : I2CD
   this->gain = GAIN::TWO;
 }
 
-void ADS1015::set_gain(GAIN gain) {
-  this->gain = gain;
-}
-
-ADS1015::GAIN ADS1015::get_gain() const {
-  return this->gain;
-}
-
 static unsigned long const sample_rates[] = {
   128, 250, 490, 920, 1600, 2400, 3300
 };
@@ -34,10 +26,6 @@ static unsigned long const sample_rates[] = {
 void ADS1015::set_sample_rate(SR sample_rate) {
   this->sample_delay = (1000 / sample_rates[sample_rate >> 5]) + 1;
   this->sample_rate = sample_rate;
-}
-
-ADS1015::SR ADS1015::get_sample_rate() const {
-  return this->sample_rate;
 }
 
 static uint8_t const high_thresh[] = {

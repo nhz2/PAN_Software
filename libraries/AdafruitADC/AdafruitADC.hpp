@@ -58,13 +58,13 @@ public:
    */
   ADS1015(i2c_t3 &i2c_wire, ADDR i2c_addr, unsigned int alert_pin);
 
-  /*! Set and return the gain value */
-  void set_gain(GAIN gain);
-  GAIN get_gain() const;
+  /*! Get and set the ADC gain value */
+  inline void set_gain(GAIN gain) { this->gain = gain; }
+  inline GAIN get_gain() const { return this->gain; }
 
-  /*! Set and return the sample rate */
+  /*! Get and set the sample rate */
   void set_sample_rate(SR sample_rate);
-  SR get_sample_rate() const;
+  inline SR get_sample_rate() const { return this->sample_rate; }
 
   /*! Two stage single channel read from the ADC. Multiple conversions cannnot
    *  be running on a single device at one time. The second function waits for

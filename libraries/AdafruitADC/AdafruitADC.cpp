@@ -42,15 +42,16 @@ void ADS1015::start_read(unsigned int line) {
     i2c_write(&thresh[3], 3);
     i2c_send_transmission(I2C_NOSTOP);
   }
-  // Write the configuration signal
+  // Determine the configuration signal
   uint16_t config = 0x8108 | this->sample_rate | this->gain | (((line % 4) << 12) + 0x4000);
   uint8_t arr[] = {
     0x01,
     (uint8_t)(config >> 0x8),
     (uint8_t)(config & 0xFF)
   };
+  // Wait for non-blocking transmission and write configuration
   i2c_finish();
-  i2c_write_bytes(arr, 3, I2C_STOP);
+  i2c_write_bytes(arr, 3);
   // Record conversion start time
   this->timestamp = millis();
 }
@@ -64,15 +65,14 @@ bool ADS1015::end_read(int16_t &val) {
   // Request and read response
   uint8_t data[2];
   i2c_write_byte(0x00, I2C_NOSTOP);
-  i2c_read_bytes(data, 2, I2C_STOP);
+  i2c_read_bytes(data, 2);
   if(i2c_pop_errors()) {
     // Failed
     this->alert_config_needed = true;
     return false;
   }
   // Success
-  val = (int16_t) ((data[0] << 8) | data[1]);
-  val = val >> 4;
+  val = (int16_t) ((data[0] << 4) | (data[1] >> 4));
   this->alert_config_needed = false;
   return true;
 }

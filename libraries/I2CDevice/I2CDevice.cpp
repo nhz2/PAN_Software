@@ -22,16 +22,16 @@ I2CDevice::I2CDevice(i2c_t3 &i2c_wire, uint8_t i2c_addr, unsigned long i2c_timeo
   this->i2c_error = 0;
 }
 
-void I2CDevice::i2c_write_bytes(uint8_t const *data, unsigned int len) {
+void I2CDevice::i2c_write_bytes(uint8_t const *data, unsigned int len, i2c_stop s) {
   this->i2c_wire.beginTransmission(this->i2c_addr);
   this->i2c_begin_transmission();
   this->i2c_write(data, len);
-  this->i2c_end_transmission();
+  this->i2c_end_transmission(s);
 }
 
-void I2CDevice::i2c_read_bytes(uint8_t *data, unsigned int len) {
+void I2CDevice::i2c_read_bytes(uint8_t *data, unsigned int len, i2c_stop s) {
   // Request data
-  this->i2c_request_from(len);
+  this->i2c_request_from(len, s);
   // Read data
   for(unsigned int i = 0; i < len; i++)
     data[i] = this->i2c_read();

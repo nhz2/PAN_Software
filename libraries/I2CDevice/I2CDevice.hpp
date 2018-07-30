@@ -8,9 +8,6 @@
 // Cornell University
 //
 
-/* 
- */
-
 #ifndef LIBRARIES_I2CDEVICE_I2CDEVICE_HPP
 #define LIBRARIES_I2CDEVICE_I2CDEVICE_HPP
 
@@ -114,22 +111,22 @@ protected:
   /*! Write the specified byte array to the i2c device. No data request is
    *  made. Check i2c_peek_errors() or i2c_pop_errors() for potential errors.
    */
-  void i2c_write_bytes(uint8_t const *data, unsigned int len);
+  void i2c_write_bytes(uint8_t const *data, unsigned int len, i2c_stop s = I2C_STOP);
 
   /*! Writes a single byte over i2c */
-  inline void i2c_write_byte(uint8_t const &data) {
-    this->i2c_write_bytes(&data, 1);
+  inline void i2c_write_byte(uint8_t const &data, i2c_stop s = I2C_STOP) {
+    this->i2c_write_bytes(&data, 1, s);
   }
 
   /*! Reads the requested number of bytes over i2c into the specified byte
    *  array. Check i2c_peek_errors() or i2c_pop_errors() for potential errors.
    *  If an error did occur, the integrity of the data read is not guaranteed.
    */
-  void i2c_read_bytes(uint8_t *data, unsigned int len);
+  void i2c_read_bytes(uint8_t *data, unsigned int len, i2c_stop s = I2C_STOP);
 
   /*! Reads a single byte over i2c */
-  inline void i2c_read_byte(uint8_t &data) {
-    this->i2c_read_bytes(&data, 1);
+  inline void i2c_read_byte(uint8_t &data, i2c_stop s = I2C_STOP) {
+    this->i2c_read_bytes(&data, 1, s);
   }
 
 private:

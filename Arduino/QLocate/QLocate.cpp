@@ -73,7 +73,12 @@ int QLocate::config() {
     port->print(F("AT&F0\r"));
     success = consume(F("\r\nOK\r\n"));
   }
-  if(success == -1) return success;
+  if(success == -1) {
+#ifdef DEBUG
+  Serial.println("config > AT&F0 status=" + String(success));
+#endif
+    return success;
+  }
 #ifdef DEBUG
   Serial.println("config > AT&F0 status=" + String(success));
 #endif
@@ -148,19 +153,20 @@ int QLocate::run_sbdix() {
 }
 
 // int parsing helper function
-int parse_int(char **const c, char const term, int *const i) {
-  *i = 0;
+int const COUNT_MAX = 75;
+int parse_ints(char const *c, int *i) {
   int count = 0;
-  while(**c != term) {
-    *i = 10 * *i + (*((*c)++) - '0');
-    if(count++ > 6) {
-    #ifdef DEBUG
-      Serial.println("ERROR: parse_int infinite loop");
-    #endif
-      return -1; // prevent infinite loop
+  while(*c != '\n' && count < COUNT_MAX) {
+    *i = 0;
+    while(*c != ',' && *c != '\r' && count++ < 75) {
+      *i = 10 * *i + *c - '0';
+      count++;
+      c++;
     }
+    c++;
+    i++;
   }
-  return 0;
+  return count <= COUNT_MAX;
 }
 
 int QLocate::end_sbdix() {
@@ -168,20 +174,8 @@ int QLocate::end_sbdix() {
   if(!sbdix_running || !port->available()) return -1;
   // Parse quake output
   char buf[75];
-  char *ptr = &buf[7]; // skip "+SBDIX:"
-  port->readBytesUntil('\r', buf, 74);
-  if(parse_int(&ptr, ',',  sbdix_r    ) == -1) return 1;
-  ptr++;
-  if(parse_int(&ptr, ',',  sbdix_r + 1) == -1) return 1;
-  ptr++;
-  if(parse_int(&ptr, ',',  sbdix_r + 2) == -1) return 1;
-  ptr++;
-  if(parse_int(&ptr, ',',  sbdix_r + 3) == -1) return 1;
-  ptr++;
-  if(parse_int(&ptr, ',',  sbdix_r + 4) == -1) return 1;
-  ptr++;
-  if(parse_int(&ptr, '\r', sbdix_r + 5) == -1) return 1;
-  return 0;
+  port->readBytesUntil('\n', buf, 74);
+  return parse_ints(buf + 7, sbdix_r) - 1;
 }
 
 int QLocate::sbdrb() {

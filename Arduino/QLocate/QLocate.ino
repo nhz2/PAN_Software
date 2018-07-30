@@ -6,23 +6,25 @@ QLocate q(&Serial3, 2000);
 void setup() {
   pinMode(13, OUTPUT);
   Serial.begin(9600);
-  Serial.println(q.config());
-  char c[] = {'h','e','l','l','o'};
-  Serial.println(q.stage_mes(c, 5));
-
-  /*
-  char res[100];
-
-  Serial3.print("AT&F0\r");
-  Serial3.flush();
-  res[Serial3.readBytes(res, 99)] = '\0';
-  Serial.println(String(res));
-
-  Serial3.print("AT&K0;&D0;E0;V0;+SBDMTA=0\r");
-  Serial3.flush();
-  res[Serial3.readBytes(res, 99)] = '\0';
-  Serial.println(String(res));*/
+  char c[] = {'R','u','n','n','i','n','g',' ','t',',',
+      'e','s','t','s',' ','a','g','a','i','n','!',' ',
+      'H','e','l','l','o',' ','f','r','o','m',' ','Q',
+      'L','o','c','a','t','e',' ','o','n',' ','t','h',
+      'e',' ','E','n','g','i','n','e','e','r','i','n',
+      'g',' ','Q','u','a','d',':',')'};
+  q.config();
+  q.sbdwb(c, sizeof(c));
+  q.run_sbdix();
   
+  int res = 0;
+  do {
+    delay(500);
+    res = q.end_sbdix();
+  } while(res == -1);
+  Serial.println("end_sbdix res= " + String(res));
+  for(int i = 0; i < 6; i++)
+    Serial.print(String(q.get_sbdix_response()[i]) + " ");
+  Serial.println();
 }
 
 void loop() {

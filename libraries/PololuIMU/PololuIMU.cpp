@@ -207,13 +207,14 @@ bool LSM6DS33::power_up(){
     CTRL1_XL,
     (uint8_t)(xl_odr<<4),
     (uint8_t)((g_odr<<4)+ ( g_fs?((g_fs-1)<<2): 2 )),
-    (uint8_t)((bdu<<6)+4),
+    (uint8_t)(((!bdu)<<6)+4),
     (uint8_t)((drdy_mask<<3)),
-    (uint8_t)((g_burst<<6))
+    (uint8_t)((g_burst?(1<<6):(0x00)))
   };
   i2c_pop_errors();
   i2c_write_bytes(data,5);
   // Process potential configuration errors
+  //writeReg(CTRL3_C,0x44);
   if(i2c_pop_errors())
     return false;
   powered_down= false;
@@ -276,10 +277,12 @@ bool LSM6DS33::update_cfg(){
 bool LSM6DS33::setup_gburst(){
   i2c_pop_errors();
   writeReg(CTRL5_C,1<<6);
+  //writeReg(CTRL3_C,(uint8_t)(bdu<<6));
   i2c_write_byte(OUTX_L_G);
   if(i2c_pop_errors())
     return false;
   g_burst= true;
+  burstpattern=0;
 
   return true;
 }
@@ -287,6 +290,7 @@ bool LSM6DS33::setup_gburst(){
 bool LSM6DS33::stop_gburst(){
   i2c_pop_errors();
   writeReg(CTRL5_C,0x00);
+  //writeReg(CTRL3_C,(uint8_t)((bdu<<6)+4));
   if(i2c_pop_errors())
     return false;
   g_burst= false;
@@ -296,13 +300,16 @@ bool LSM6DS33::stop_gburst(){
 bool LSM6DS33::read_gburst(){
   i2c_pop_errors();
   uint8_t data[6];
+  //while (!((2) & readReg(STATUS_REG))){}
+  //i2c_write_byte(OUTX_L_G);
   i2c_read_bytes(data, 6);
   if(i2c_pop_errors())
     return false;
   // Successful read
   for (int i=0; i<3; i++){
-    gout[i]= (((int16_t)data[2*i+1])<<8) + ((int16_t)data[2*i]);
+    gout[i]= (((int16_t)data[(2*i+1+burstpattern)%6])<<8) + ((int16_t)data[(2*i+burstpattern)%6]);
   }
+  burstpattern=(burstpattern+5)%6;
   return true;
 }
 

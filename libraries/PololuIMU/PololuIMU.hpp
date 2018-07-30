@@ -366,6 +366,9 @@ private:
   bool bdu;
   /*! is gyroscope burst on*/
   bool g_burst;
+  /*!What pattern the bytes are in*/
+  uint8_t burstpattern;
+
   /*! is fifo on, either bypass or continuous*/
   // bool fifo
   // /*! fifo gyroscope data decimation factors 0 means not in fifo

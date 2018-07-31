@@ -20,12 +20,12 @@ ADS1015 ssa::adcs[5] = {
   ADS1015(Wire1, ADS1015::ADDR::SDA, 20)
 };
 
-int16_t ssa::raw_data[20] = {
+int16_t ssa::raw_data[SSA_ADC_COUNT * 4] = {
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-unsigned int ssa::consec_err[5] = {
+unsigned int ssa::consec_err[SSA_ADC_COUNT] = {
   0, 0, 0, 0, 0
 };
 
@@ -39,17 +39,17 @@ static unsigned int next_line;
 
 void ssa::init() {
   // Congigure the ADCs
-  for(unsigned int i = 0; i < 5; i++) {
+  for(unsigned int i = 0; i < SSA_ADC_COUNT; i++) {
     adcs[i].set_sample_rate(ADS1015::SR::SPS_920);
     adcs[i].set_gain(ADS1015::GAIN::ONE);
   }
   // Initial reads from all adc channels
   for(unsigned int line = 0; line < 4; line++) {
     // Initiate first read
-    for(unsigned int adc = 0; adc < 5; adc++)
+    for(unsigned int adc = 0; adc < SSA_ADC_COUNT; adc++)
       adcs[adc].start_read(line);
     // Attempt to complete first read
-    for(unsigned int adc = 0; adc < 5; adc++) {
+    for(unsigned int adc = 0; adc < SSA_ADC_COUNT; adc++) {
       if(!adcs[adc].end_read(ref_raw_data(adc, line))) {
         ref_raw_data(adc, line) = 0;
         consec_err[adc]++;
@@ -63,8 +63,8 @@ void ssa::init() {
 bool ssa::read(float *sun_vector) {
   // Generate a list of which ADCs to read
   std::vector<unsigned int> adc_vec;
-  adc_vec.reserve(5);
-  for(unsigned int i = 0; i < 5; i++)
+  adc_vec.reserve(SSA_ADC_COUNT);
+  for(unsigned int i = 0; i < SSA_ADC_COUNT; i++)
     if(consec_err[i] < 100)
       adc_vec.push_back(i);
   // Iterate through the functioning ADCs

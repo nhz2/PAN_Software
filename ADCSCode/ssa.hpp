@@ -26,23 +26,26 @@
  */
 #define SSA_ADCS_SAMPLE_RATE ADS1015::SR::SPS_920
 
+/*! How many sun sensor ADC units their are */
+#define SSA_ADC_COUNT 5;
+
 /*! Namespace for sun sensor assembly related things */
 namespace ssa {
 
   /*! Defining the five analog to digital converters. The address values are
    *  subject to change.
    */
-  extern ADS1015 adcs[5];
+  extern ADS1015 adcs[SSA_ADC_COUNT];
 
   /*! 20 entry 16 bit signed integer array to store raw ADC reads */
-  extern int16_t raw_data[20];
+  extern int16_t raw_data[SSA_ADC_COUNT * 4];
 
   /*! Tracks consecutive failed I2C communications on behalf of each ADC - i.e.
    *  once a proper communication is made, it's broken value is set back to 0.
    *  An entire ADC will be ignored if it fails SSA_IGNORE_ON_READS consecutive
    *  communication attempts.
    */
-  extern unsigned int consec_err[5];
+  extern unsigned int consec_err[SSA_ADC_COUNT];
 
   /*! Initiates communication with the ADCs and takes initial data on all
    *  channels. If an ADC communication fails, it's consec_err count is
@@ -67,15 +70,25 @@ namespace ssa {
    *    raw_data[0],raw_data[1],...,raw_data[19],consec_err[0],...,consec_err[4]
    */
   void verbose_output() {
-    for(unsigned int i = 0; i < 20; i++) {
+    for(unsigned int i = 0; i < SSA_ADC_COUNT * 4; i++) {
       Serial.print(raw_data[i]);
       Serial.print(',');
     }
-    for(unsigned int i = 0; i < 4; i++) {
+    for(unsigned int i = 0; i < SSA_ADC_COUNT; i++) {
       Serial.print(consec_err[i]);
       Serial.print(',');
     }
     Serial.print(consec_err[4]);
+  }
+
+  /*! Reports any ADC communication error that has occurred - i.e. the
+   *  consec_err value is non-zero. This methods prints lines with the "!"
+   *  alert modifier.
+   */
+  void verbose_error() {
+    for(unsigned int i = 0; i < SSA_ADC_COUNT; i++)
+      if(consec_err[i] > 0)
+        Serial.println("!ADC " + String(i) + " had a communication error");
   }
 #endif
 

@@ -48,16 +48,15 @@ void flush_serial() {
 void pottest(){
   AD5254 mypot(Wire1,AD5254_ADDR_0);
   delay(100);
-  mypot.set_rdac(0,0,0);
+  mypot.set_rdac(100,255,100);
   Serial.println(mypot.write_block());
   while(!Serial.available()){
-    delay(100);
-    // Serial.println(mypot.read_block());
-    // Serial.print(String(millis()) + ",");
-    // Serial.print(String(mypot.get_rdac0())+","+
-    //              String(mypot.get_rdac1())+","+
-    //              String(mypot.get_rdac2()));
-    // Serial.println();
+    delay(200);
+    Serial.print(String(millis()) + ",");
+    Serial.print(String(analogRead(1))+","+
+                 String(analogRead(2))+","+
+                 String(analogRead(3)));
+    Serial.println();
 
   }
 }

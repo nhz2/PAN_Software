@@ -39,7 +39,7 @@ public:
 
   /*!if sent i2c message to read rdacs
   updates value of rdacs*/
-  bool read_block();
+  // bool read_block();
 
   /*!if sent i2c message to write rdacs*/
   bool write_block();

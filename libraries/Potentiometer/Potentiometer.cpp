@@ -29,21 +29,21 @@ uint8_t AD5254::get_rdac2(){
   return rdac[2];
 }
 
-bool AD5254::read_block(){
-  i2c_pop_errors();
-
-  // Request data
-  uint8_t data[3];
-  i2c_write_byte(0b10000000);
-  i2c_read_bytes(data, 3);
-  if(i2c_pop_errors())
-    return false;
-  // Successful read
-  for (int i = 0; i < 3; i++) {
-    rdac[i]=data[i];
-  }
-  return true;
-}
+// bool AD5254::read_block(){
+//   i2c_pop_errors();
+//
+//   // Request data
+//   uint8_t data[3];
+//   i2c_write_byte(0b10000000);
+//   i2c_read_bytes(data, 3);
+//   if(i2c_pop_errors())
+//     return false;
+//   // Successful read
+//   for (int i = 0; i < 3; i++) {
+//     rdac[i]=data[i];
+//   }
+//   return true;
+// }
 
 bool AD5254::write_block(){
   uint8_t data[]={
@@ -53,7 +53,7 @@ bool AD5254::write_block(){
     rdac[2]
   };
   i2c_pop_errors();
-  i2c_write_bytes(data,4);
+  i2c_write_bytes(data,4); 
   // Process potential configuration errors
   if(i2c_pop_errors())
     return false;

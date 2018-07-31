@@ -47,6 +47,8 @@ void setup() {
   Wire.begin();
   Wire1.begin();
 
+  ssa::init();
+
 #ifdef VERBOSE
   // Start serial port for verbose output
   Serial.begin(9600);
@@ -54,11 +56,37 @@ void setup() {
 
   // Start of the testing mode switch statement
 #ifdef TESTING
+
+  ssa::verbose_error();
+
   // Testing relies on a user input of a test code (see switch statement)
   while(Serial.available() < 1);
   unsigned char code = Serial.read();
   flush_serial();
   switch (code) {
+
+    /*! Test case 'a' runs sun sensor ADC tests on their own. The tests records
+     *  sun sensor data every TEST_A_TIMESTEP milliseconds and writes it over
+     *  serial in the following form until a new charactar is sent over serial:
+     *    #time,ssa_data0,...,ssa_data19,ssa_err0,...ssa_err4
+     */
+    static const unsigned long TEST_A_TIMESTEP = 500;
+    case 's': {
+      Serial.println("@s");
+      Serial.print("#" + String(millis()) + ",");
+      ssa::verbose_output();
+      Serial.println();
+      while(!Serial.available()) {
+        float v[3];
+        ssa::read(v);
+        Serial.print(String(millis()) + ",");
+        ssa::verbose_output();
+        Serial.println();
+        delay(TEST_A_TIMESTEP);
+      }
+      flush_serial();
+      break;
+    }
 
     /*! // TODO : Add comment here like for test a
      */
@@ -76,30 +104,6 @@ void setup() {
                      String(mygyro.g_z()));
         Serial.println();
         delay(96);
-      }
-      flush_serial();
-      break;
-    }
-
-    /*! Test case 'a' runs sun sensor ADC tests on their own. The tests records
-     *  sun sensor data every TEST_A_TIMESTEP milliseconds and writes it over
-     *  serial in the following form until a new charactar is sent over serial:
-     *    #time,ssa_data0,...,ssa_data19,ssa_err0,...ssa_err4
-     */
-    static const unsigned long TEST_A_TIMESTEP = 500;
-    case 's': {
-      ssa::init();
-      Serial.println("@s");
-      Serial.print("#" + String(millis()) + ",");
-      ssa::verbose_output();
-      Serial.println();
-      while(!Serial.available()) {
-        float v[3];
-        ssa::read(v);
-        Serial.print(String(millis()) + ",");
-        ssa::verbose_output();
-        Serial.println();
-        delay(TEST_A_TIMESTEP);
       }
       flush_serial();
       break;

@@ -17,87 +17,80 @@
 
 #ifndef ADCSCODE_MTR_HPP
 #define ADCSCODE_MTR_HPP
-/*
+
 #include <PololuIMU.hpp>
 
-/*! How many times a sensor must fail before ignored
+/*! How many times a sensor must fail before ignored */
 #define MTR_IGNORE_ON_READS 100
 
-/*! This enumerates the three ways an MTR can be asked to operate
+/*! This enumerates the three ways an MTR can be asked to operate */
 enum MTR_OPERATION {
   FORWARD,
   REVERSE,
   CONTROL
 };
 
-/*! Namespace for magnetic torque rod related things
+/*! Namespace for magnetic torque rod related things */
 namespace mtr {
 
-  /*! MTR operation modes in the x, y, and z directions
-  extern MTR_OPERATION op_modes[3];
+  /*! Struct containing all the data corresponding to an MTR and its
+   *  peripherals.
+   */
+  struct MTRUnit {
 
-  /*! Most recent PWM value written to each of the magnetic torque rods h
-   *  bridges. The data is stored in the array as follows:
-   *    f_mtr1, r_mtr1, f_mtr2,...,r_mtr3
+    /*! Forward and reverse PWM H bridge pins */
+    unsigned int const f_pin;
+    unsigned int const r_pin;
 
-  extern unsigned char last_pwm[6];
+    /*! Current operation mode and last commanded signed PWM value */
+    MTR_OPERATION op_mode;
+    int last_pwm;
 
-  /*! MTR monitoring magnetometer array
-  extern LIS3MDL mags[3];
+    /*! Monitoring magnetometer and it's communication error count */
+    LIS3MDL mag;
+    unsigned int consec_err;
 
-  /*! MTR monitoring magnetometer consecutive error count
-  extern unsigned int consec_err[3];
+  };
+
+  /*! The three MTR assemblies */
+  extern MTRUnit mtrs[3];
 
   /*! Initiates the pin modes of all MTR related pins. Each mtr is also set to
    *  a default MTR_OPERATION value of control.
-
+   */
   void init();
-
-  /*! Sets the mtr operation mode in the x direction
-  inline void set_op_x(MTR_OPERATION op_mode) {
-    op_modes[0] = op_mode;
-  }
-
-  /*! Sets the mtr operation mode in the y direction
-  inline void set_op_y(MTR_OPERATION op_mode) {
-    op_modes[1] = op_mode;
-  }
-
-  /*! Sets the mtr operation mode in the z direction
-  inline void set_op_z(MTR_OPERATION op_mode) {
-    op_modes[2] = op_mode;
-  }
 
   /*! Actuates the MTRs according to their operation mode. This function must
    *  be called frequently for the CONTROL operation to be effective.
-
-  void actuate();
+   */
+  void actuate(MTR_OPERATION op_x, MTR_OPERATION op_y, MTR_OPERATION op_z);
 
 #ifdef VERBOSE
   /*! Outputs the operation modes and last pwm values to a csv style data line.
    *  The format of the line is as follows:
-   *    op1,op2,op3,f_mtr1,r_mtr1,f_mtr2,...,r_mtr3,mag1_z,...,err1,...,err3
-
+   *    op1,pwm1,magz1,err1,op2,...,magz3,err3
+   */
   void verbose_output() {
-    for(unsigned int i = 0; i < 3; i++)
-      Serial.print(String(op_modes[i]) + ",");
-    for(unsigned int i = 0; i < 6; i++)
-      Serial.print(String(last_pwm[i]) + ",");
-    for(unsigned int i = 0; i < 3; i++)
-      Serial.print(String(mags[0].z()) + ",");
-    Serial.print(String(consec_err[0]) + ",");
-    Serial.print(String(consec_err[1]) + ",");
-    Serial.print(String(consec_err[2]));
+    for(unsigned int i = 0; i < 3; i++) {
+      MTRUnit const &m = mtrs[i];
+      Serial.print(String(m.op_mode) + ",");
+      Serial.print(String(m.last_pwm) + ",");
+      Serial.print(String(m.mag.z()) + ",");
+      Serial.print(String(m.op_mode) + ",");
+      Serial.print(m.consec_err);
+      if(i < 2)
+        Serial.print(',');
+    }
   }
 
-  /*! Outputs alert messages on components with a non-zero consec_err value
+  /*! Outputs alert messages on components with a non-zero consec_err value */
   void verbose_error() {
     for(unsigned int i = 0; i < 3; i++)
-      if(consec_err[i] > 0)
+      if(mtrs[i].consec_err > 0)
         Serial.println("!MTR mag " + String(i) + " had a communication error");
   }
 #endif
 
 }
-*/
+
 #endif

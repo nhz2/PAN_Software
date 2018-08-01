@@ -60,6 +60,7 @@ void setup() {
   Wire1.begin(I2C_MASTER,0,I2C_PINS_37_38,I2C_PULLUP_EXT,100000,I2C_OP_MODE_ISR);
   Wire2.begin(I2C_MASTER,0,I2C_PINS_3_4,I2C_PULLUP_EXT,100000,I2C_OP_MODE_ISR);
 
+  mtr::init();
   ssa::init();
 
 #ifdef VERBOSE
@@ -67,6 +68,7 @@ void setup() {
   Serial.begin(9600);
   // Output all initialization error alert messages
   ssa::verbose_error();
+  mtr::verbose_error();
 #ifdef TESTING
   // Charactar testing code loop
   while(1) {

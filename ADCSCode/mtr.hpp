@@ -27,7 +27,7 @@ enum MTR_OPERATION {
 /*! Namespace for magnetic torque rod related things */
 namespace mtr {
 
-
+  
 
 }
 

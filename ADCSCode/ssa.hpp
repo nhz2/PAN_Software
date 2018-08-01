@@ -27,7 +27,7 @@
 #define SSA_ADCS_SAMPLE_RATE ADS1015::SR::SPS_920
 
 /*! How many sun sensor ADC units their are */
-#define SSA_ADC_COUNT 5;
+#define SSA_ADC_COUNT 5
 
 /*! Namespace for sun sensor assembly related things */
 namespace ssa {

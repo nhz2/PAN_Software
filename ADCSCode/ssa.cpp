@@ -1,7 +1,8 @@
 //
 // ADCSCode/ssa.hpp
 //
-// Created by Kyle Krol (kpk63@cornell.edu) on 7/24/2018
+// Contributors:
+//   Kyle Krol          kpk63@cornell.edu
 //
 // Pathfinder for Autonomous Navigation
 // Space Systems Design Studio

@@ -16,7 +16,6 @@
 
 #include <I2CDevice.hpp>
 
-
 /*! Possible slave addresses */
 static const uint8_t LIS3MDL_ADDR_HIGH = 0b0011110;
 static const uint8_t LIS3MDL_ADDR_LOW  = 0b0011100;
@@ -116,12 +115,6 @@ private:
   bool should_reset;
 
 };
-
-
-
-
-
-
 
 /*!
  */

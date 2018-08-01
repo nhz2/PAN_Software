@@ -51,14 +51,11 @@ void setup() {
 
   // RWA Potentiometer Analog Read pinMode calls
   // TODO : Move this into an rwa.hpp rwa.cpp pair
-  pinMode(15, INPUT);
-  pinMode(16, INPUT);
-  pinMode(17, INPUT);
 
   // Initialize all I2C busses
-  Wire.begin(I2C_MASTER,0,I2C_PINS_18_19,I2C_PULLUP_EXT,100000,I2C_OP_MODE_ISR);
-  Wire1.begin(I2C_MASTER,0,I2C_PINS_37_38,I2C_PULLUP_EXT,100000,I2C_OP_MODE_ISR);
-  Wire2.begin(I2C_MASTER,0,I2C_PINS_3_4,I2C_PULLUP_EXT,100000,I2C_OP_MODE_ISR);
+  Wire.begin(I2C_MASTER,0,I2C_PINS_18_19,I2C_PULLUP_EXT,400000,I2C_OP_MODE_ISR);
+  Wire1.begin(I2C_MASTER,0,I2C_PINS_37_38,I2C_PULLUP_EXT,400000,I2C_OP_MODE_ISR);
+  Wire2.begin(I2C_MASTER,0,I2C_PINS_3_4,I2C_PULLUP_EXT,400000,I2C_OP_MODE_ISR);
 
   mtr::init();
   ssa::init();
@@ -135,18 +132,27 @@ void test_gyro() {
 }
 
 void test_pot() {
-  AD5254 mypot(Wire1,AD5254_ADDR_0);
-  delay(100);
-  mypot.set_rdac(100,255,100);
+  AD5254 mypot(Wire1,AD5254_ADDR_1);
+  delay(500);
+  mypot.set_rdac(0,0,0);
   Serial.println(mypot.write_block());
   while(!Serial.available()){
-    delay(200);
+    delay(500);
     Serial.print(String(millis()) + ",");
     Serial.print(String(analogRead(1))+","+
                  String(analogRead(2))+","+
                  String(analogRead(3)));
     Serial.println();
   }
+}
+
+void test_dac() {
+  //from https://www.pjrc.com/teensy/teensy31.html
+  analogWriteResolution(12);
+  analogWrite(A22, 4050);
+  analogWrite(A21, 4050);
+  while(true){}
+
 }
 
 /*! Performs a test depending on which charactar code is fed to the function */
@@ -160,12 +166,17 @@ void test_on_char(unsigned char code) {
     // Performs a gyroscope only test
     case 'g':
       Serial.println("@g");
-      // TODO : test function
+      test_gyro();
       break;
     // Potentiometer only test
     case 'p':
       Serial.println("@p");
-      // TODO : Actual testing function
+      test_pot();
+      break;
+      // DAC only test
+    case 'd':
+      Serial.println("@d");
+      test_dac();
       break;
     // Unrecognized charactar code
     default:

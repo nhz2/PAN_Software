@@ -88,6 +88,7 @@ void loop() {
  *  All code below this line is included for testing purposes only. It is not
  *  relavent to the flight version of the software.
  */
+ #ifdef TESTING
 
 /*! Test case 's' runs sun sensor ADC tests on their own. The tests records
  *  sun sensor data every read_delay milliseconds and writes it over serial
@@ -279,3 +280,5 @@ void test_on_char(unsigned char code) {
       Serial.println("!Unrecognized test charactar code");
   }
 }
+
+#endif

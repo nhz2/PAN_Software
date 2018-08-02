@@ -156,13 +156,13 @@ void test_dac() {
 }
 
 void test_x() {
-  //RWA setup
-  int SpeedSet = 6;
-  int CCW = 5;
-  int CW = 3;
-  float SpeedA2;
-  int A2read = 0;
-  float voltageA2;
+  //RWA x setup
+  int SpeedSet = 23;
+  int CCW = 39;
+  int CW = 26;
+  float speedA;
+  int Aread = 14;
+  float voltageA;
   int gate=0;
   int gate1=0;
   int gate2=0;
@@ -175,7 +175,8 @@ void test_x() {
   int max_accel=2000;
   int accel=0;
   int accel_cmd=255;
-  int ACC=9;
+  int ACC=1;
+  AD5254 pot(Wire1,AD5254_ADDR_1);
   int delta_accel=100;
   float time_delay;
   int counter1;
@@ -183,18 +184,20 @@ void test_x() {
   pinMode(CW,OUTPUT);
   pinMode(CCW,OUTPUT);
   pinMode(SpeedSet,OUTPUT);
-  pinMode(ACC,OUTPUT);
+  pinMode(ACC,INPUT);
   pinMode(A2,INPUT);
 
   digitalWrite(CCW,LOW); // Only one of these can be high at a time
   digitalWrite(CW,HIGH); // Only one of these can be high at a time
-  analogWrite(ACC,accel_cmd); // Set the Speed here
+  pot.set_rdac(accel_cmd,0,0);// Set the acceleration here
+  pot.write_block();
 
   delay(100);
 
   analogWrite(SpeedSet,min_speed_cmd); // Set the Speed here
   delay(1000);
-  analogWrite(ACC,0); // Set the Speed here
+  pot.set_rdac(0,0,0);// Set the acceleration here
+  pot.write_block();
   gate1=1;
   //test loop
   while(true){
@@ -207,7 +210,8 @@ void test_x() {
       accel=accel+delta_accel;
       accel_cmd=((float)accel/2000.0)*255.0;
       //analogWrite(ACC,(int)accel_cmd);
-      analogWrite(ACC,255);
+      pot.set_rdac(255,0,0);// Set the acceleration here
+      pot.write_block();
       analogWrite(SpeedSet,min_speed_cmd);
       gate3++; //this will count up until gate3 opens
       time_delay=max_speed/(float)accel*1000.0+2000.0;
@@ -218,17 +222,17 @@ void test_x() {
       while(1){} //this will end the program once the max acceleration has been tested
     }
 
-    A2read = analogRead(A2); //rpm of wheel
+    Aread = analogRead(A2); //rpm of wheel
     //Serial.println(micros());
-    voltageA2 = A2read * (5.00 / 1023.00);
-    SpeedA2 = max_speed / 3.33 * (3.33-voltageA2);
-    Serial.println(SpeedA2);
+    voltageA = Aread * (5.00 / 1023.00);
+    speedA = max_speed / 3.33 * (3.33-voltageA);
+    Serial.println(speedA);
     counter1++;
 
     if (counter1==100 && gate1==0) {
       analogWrite(SpeedSet,max_speed_cmd);
     }
-    if(SpeedA2>1599.0 && gate1==0){
+    if(speedA>1599.0 && gate1==0){
       gate2=1;
     }
     if(gate2==1){ //this will wait until max sp                                eed is reached and begin counter 2

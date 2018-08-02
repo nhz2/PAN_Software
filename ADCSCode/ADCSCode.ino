@@ -155,6 +155,93 @@ void test_dac() {
 
 }
 
+void test_x() {
+  //RWA setup
+  int SpeedSet = 6;
+  int CCW = 5;
+  int CW = 3;
+  float SpeedA2;
+  int A2read = 0;
+  float voltageA2;
+  int gate=0;
+  int gate1=0;
+  int gate2=0;
+  int gate3=0;
+  int detumble_cmd;
+  float max_speed=2000.0;
+  int min_speed_cmd=29;
+  int max_speed_cmd=230;
+  int speed_cmd=30;
+  int max_accel=2000;
+  int accel=0;
+  int accel_cmd=255;
+  int ACC=9;
+  int delta_accel=100;
+  float time_delay;
+  int counter1;
+  int counter2;
+  pinMode(CW,OUTPUT);
+  pinMode(CCW,OUTPUT);
+  pinMode(SpeedSet,OUTPUT);
+  pinMode(ACC,OUTPUT);
+  pinMode(A2,INPUT);
+
+  digitalWrite(CCW,LOW); // Only one of these can be high at a time
+  digitalWrite(CW,HIGH); // Only one of these can be high at a time
+  analogWrite(ACC,accel_cmd); // Set the Speed here
+
+  delay(100);
+
+  analogWrite(SpeedSet,min_speed_cmd); // Set the Speed here
+  delay(1000);
+  analogWrite(ACC,0); // Set the Speed here
+  gate1=1;
+  //test loop
+  while(true){
+    delay(10);
+    if (gate1==1){
+      gate1=0;
+      gate2=0;
+      counter1=0;
+      counter2=0;
+      accel=accel+delta_accel;
+      accel_cmd=((float)accel/2000.0)*255.0;
+      //analogWrite(ACC,(int)accel_cmd);
+      analogWrite(ACC,255);
+      analogWrite(SpeedSet,min_speed_cmd);
+      gate3++; //this will count up until gate3 opens
+      time_delay=max_speed/(float)accel*1000.0+2000.0;
+      delay(time_delay);
+    }
+
+    if (gate3==(max_accel/delta_accel+1)){
+      while(1){} //this will end the program once the max acceleration has been tested
+    }
+
+    A2read = analogRead(A2); //rpm of wheel
+    //Serial.println(micros());
+    voltageA2 = A2read * (5.00 / 1023.00);
+    SpeedA2 = max_speed / 3.33 * (3.33-voltageA2);
+    Serial.println(SpeedA2);
+    counter1++;
+
+    if (counter1==100 && gate1==0) {
+      analogWrite(SpeedSet,max_speed_cmd);
+    }
+    if(SpeedA2>1599.0 && gate1==0){
+      gate2=1;
+    }
+    if(gate2==1){ //this will wait until max sp                                eed is reached and begin counter 2
+      counter2++;
+    }
+    if(counter2==100){ //this will wait until counter 2 is at 100
+      gate1=1; //opening gate 1 means doing the next acceleration loop
+    }
+
+  }
+
+}
+
 /*! Performs a test depending on which charactar code is fed to the function */
 void test_on_char(unsigned char code) {
   switch (code) {
@@ -177,6 +264,11 @@ void test_on_char(unsigned char code) {
     case 'd':
       Serial.println("@d");
       test_dac();
+      break;
+      //Motor x test
+    case 'x':
+      Serial.println("@x");
+      test_x();
       break;
     // Unrecognized charactar code
     default:

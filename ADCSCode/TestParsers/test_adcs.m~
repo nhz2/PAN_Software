@@ -5,8 +5,9 @@
 % the port being used by the Arduino IDE "Tools -> Port".
 SerialPort = '/dev/tty.';
 
-% This is the filename where the testing data will be stored.
-CSVFileName = 'data/rev1/t_08_31_18_00.txt';
+% This is the file name where all of the teensy testing output will be
+% saved. 
+CSVFileName = 'tests_08_18/';
 
 % End of Adjustable Variables ---------------------------------------------
 

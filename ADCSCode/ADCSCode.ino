@@ -156,93 +156,57 @@ void test_dac() {
 }
 
 void test_x() {
-  //RWA x setup
-  int SpeedSet = 23;
-  int CCW = 39;
-  int CW = 26;
-  float speedA;
-  int Aread = 14;
-  float voltageA;
-  int gate=0;
-  int gate1=0;
-  int gate2=0;
-  int gate3=0;
-  int detumble_cmd;
-  float max_speed=2000.0;
-  int min_speed_cmd=29;
-  int max_speed_cmd=230;
-  int speed_cmd=30;
-  int max_accel=2000;
-  int accel=0;
-  int accel_cmd=255;
-  int ACC=1;
   AD5254 pot(Wire1,AD5254_ADDR_1);
-  int delta_accel=100;
-  float time_delay;
-  int counter1;
-  int counter2;
-  pinMode(CW,OUTPUT);
-  pinMode(CCW,OUTPUT);
-  pinMode(SpeedSet,OUTPUT);
-  pinMode(ACC,INPUT);
-  pinMode(A2,INPUT);
 
-  digitalWrite(CCW,LOW); // Only one of these can be high at a time
-  digitalWrite(CW,HIGH); // Only one of these can be high at a time
-  pot.set_rdac(accel_cmd,0,0);// Set the acceleration here
-  pot.write_block();
+  //pins
+  //int dio4;
+  int dio3= 39;//Enable CCW:			Digital Input 3			High active
+  int di2= 26;//Enable CW:			Digital Input 2			High active
+  int di1= 23;//PWM set speed 0 to 5000 rpm : 10% to 90%
+  //int ao2;
+  int ao1= A14;//speedread
+  //int ai2neg;
+  //int ai2pos;
+  //int ai1neg;
+  //int ai1pos= A1;//ramp input
 
-  delay(100);
+  //settings
+  int setspeed= 100;
+  int readspeed= 0;
+  int setramp= 100;
+  int readramp= 0;
 
-  analogWrite(SpeedSet,min_speed_cmd); // Set the Speed here
-  delay(1000);
-  pot.set_rdac(0,0,0);// Set the acceleration here
-  pot.write_block();
-  gate1=1;
-  //test loop
-  while(true){
-    delay(10);
-    if (gate1==1){
-      gate1=0;
-      gate2=0;
-      counter1=0;
-      counter2=0;
-      accel=accel+delta_accel;
-      accel_cmd=((float)accel/2000.0)*255.0;
-      //analogWrite(ACC,(int)accel_cmd);
-      pot.set_rdac(255,0,0);// Set the acceleration here
-      pot.write_block();
-      analogWrite(SpeedSet,min_speed_cmd);
-      gate3++; //this will count up until gate3 opens
-      time_delay=max_speed/(float)accel*1000.0+2000.0;
-      delay(time_delay);
+  pinMode(di1,OUTPUT);
+  pinMode(di2,OUTPUT);
+  pinMode(dio3, OUTPUT);
+  pinMode(ao1, INPUT);
+  digitalWrite(di2, HIGH);
+  digitalWrite(dio3, LOW);
+
+  empty_serial();
+  while (!Serial.available()) {
+
+    pot.set_rdac(50, 0, 0);
+    pot.write_block();
+    analogWrite(di1, 225);
+
+    empty_serial();
+    while(!Serial.available()) {
+      readspeed= analogRead(ao1);
+      delay(1000);
+      Serial.println(readspeed);
     }
+    empty_serial();
 
-    if (gate3==(max_accel/delta_accel+1)){
-      while(1){} //this will end the program once the max acceleration has been tested
-    }
-
-    Aread = analogRead(A2); //rpm of wheel
-    //Serial.println(micros());
-    voltageA = Aread * (5.00 / 1023.00);
-    speedA = max_speed / 3.33 * (3.33-voltageA);
-    Serial.println(speedA);
-    counter1++;
-
-    if (counter1==100 && gate1==0) {
-      analogWrite(SpeedSet,max_speed_cmd);
-    }
-    if(speedA>1599.0 && gate1==0){
-      gate2=1;
-    }
-    if(gate2==1){ //this will wait until max sp                                eed is reached and begin counter 2
-      counter2++;
-    }
-    if(counter2==100){ //this will wait until counter 2 is at 100
-      gate1=1; //opening gate 1 means doing the next acceleration loop
-    }
-
+    analogWrite(di1, 26);
+    while(analogRead(ao1) > 5);
+    delay(100);
   }
+
+
+
+
+
 
 }
 

@@ -180,34 +180,33 @@ void test_x() {
   pinMode(di2,OUTPUT);
   pinMode(dio3, OUTPUT);
   pinMode(ao1, INPUT);
-  digitalWrite(di2, HIGH);
-  digitalWrite(dio3, LOW);
+  digitalWrite(di2, LOW);
+  digitalWrite(dio3, HIGH);
 
   empty_serial();
-  while (!Serial.available()) {
 
-    pot.set_rdac(50, 0, 0);
-    pot.write_block();
-    analogWrite(di1, 225);
+  pot.set_rdac(50, 0, 0);
+  pot.write_block();
+  analogWrite(di1, 225);
 
-    empty_serial();
-    while(!Serial.available()) {
-      readspeed= analogRead(ao1);
-      delay(1000);
-      Serial.println(readspeed);
-    }
-    empty_serial();
-
-    analogWrite(di1, 26);
-    while(analogRead(ao1) > 5);
+  empty_serial();
+  int starttime= millis();
+  while((millis()-starttime)<10000) {
+    readspeed= analogRead(ao1);
     delay(100);
+    Serial.println(readspeed);
   }
+  empty_serial();
 
-
-
-
-
-
+  pot.set_rdac(50, 0, 0);
+  pot.write_block();
+  analogWrite(di1, 25);
+  starttime= millis();
+  while((millis()-starttime)<10000) {
+    readspeed= analogRead(ao1);
+    delay(100);
+    Serial.println(readspeed);
+  }
 }
 
 /*! Performs a test depending on which charactar code is fed to the function */

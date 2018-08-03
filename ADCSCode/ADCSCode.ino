@@ -56,7 +56,7 @@ void setup() {
   Wire.begin(I2C_MASTER,0,I2C_PINS_18_19,I2C_PULLUP_EXT,400000,I2C_OP_MODE_ISR);
   Wire1.begin(I2C_MASTER,0,I2C_PINS_37_38,I2C_PULLUP_EXT,400000,I2C_OP_MODE_ISR);
   Wire2.begin(I2C_MASTER,0,I2C_PINS_3_4,I2C_PULLUP_EXT,400000,I2C_OP_MODE_ISR);
-
+  analogReadResolution(16);
   mtr::init();
   ssa::init();
 

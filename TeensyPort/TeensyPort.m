@@ -71,3 +71,15 @@ while(1)
     end
     
 end
+
+% Close io and clear variables
+
+fclose(File);
+fclose(Serial);
+delete(Serial);
+
+clear File
+clear Serial
+clear line
+clear tmov
+clear code

@@ -15,11 +15,8 @@ Serial = serial(SerialPort);
 set(Serial, 'BaudRate', 9600);
 fopen(Serial);
 
-% Counters for the number of times each test has been run
-TestCounter = [
-    'g', 0;
-    's', 0
-];
+% Initialize data file to store test data
+File = fopen(CSVFileName, 'w');
 
 % Loop to run more tests until the end charactar '0' is input
 flag = 0;
@@ -31,25 +28,12 @@ while(~flag)
     fprintf('\n');
     flag = (n(1) == '0');
     
-    % Retrieve index of test id
-    i = find(TestCounter(:,1) == n(1));
+    % Write command over Serial
+    fprintf("%s\n", n);
     
-    if(isempty(i))
-        
-        % Invalid test ID
-        fprintf('Not a valid test ID. Please try again.');
-        
-    else
-        
-        % Write test code to 
-        fprintf(Serial, '%s', i(1));
-        
-        line = fgetl(Serial);
-        parse_line(line);
-        
-        % Increment test counter
-        TestCounter(i(1),2) = TestCounter(i(1),2) + 1;
-        
+    if(~flag)
+        while(next_line(File))
+        end
     end
     
 end
@@ -62,18 +46,18 @@ clear flag
 clear line
 
 fclose(Serial);
+fclose(File);
 delete(Serial);
+delete(File);
 clear Serial;
+clear File
 
-function handle_test(code, count)
-
-
-
-end
-
-function handle_line(line)
+function should_end = next_line()
 % Parses the teensy lines and display/writes the appropriate data to the
-% command window and/or output files.
+% command window and/or output files. If the test has completed true is
+% returned.
+
+    should_end = 0;
 
     switch line(1)
         
@@ -88,6 +72,10 @@ function handle_line(line)
         % Data line recieved
         case '#'
             % TODO : Write data lines to the appropriate output file
+            
+        % End of a test without a timeout
+        case '$'
+            should_end = 1;
             
         % Undefined behavior
         otherwise

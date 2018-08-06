@@ -54,8 +54,9 @@ while(1)
             
         % Requesting character code
         case '$'
-            code = input('Input a Charactar Code: ', 's');
-            tmov = input('Input a timeout value (0 is no timeout): ');
+            fprintf('\nCharacter test code requested\n');
+            code = input('Code: ', 's');
+            tmov = input('Tmov: ');
             fprintf(Serial, "%s", code);
             
         % TeensyPort close command

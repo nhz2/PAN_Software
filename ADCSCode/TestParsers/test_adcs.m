@@ -18,24 +18,24 @@ fopen(Serial);
 % Initialize data file to store test data
 File = fopen(CSVFileName, 'w');
 
-% Loop to run more tests until the end charactar '0' is input
+% Loop to run more tests until the end character '0' is input
 flag = 0;
 while(~flag)
-  
-    % Read in test charactar - only the first charactar is used
-    n = input('\nTest charactar: ', 's');
+
+    % Read in test character - only the first character is used
+    n = input('\nTest character: ', 's');
     t = input('Test time (seconds): ');
     fprintf('\n');
     flag = (n(1) == '0');
-    
+
     % Write command over Serial
     fprintf("%s\n", n);
-    
+
     if(~flag)
         while(next_line(File))
         end
     end
-    
+
 end
 
 % Clean up resources
@@ -60,26 +60,26 @@ function should_end = next_line()
     should_end = 0;
 
     switch line(1)
-        
-        % Alert line recieved
+
+        % Alert line received
         case '!'
             fprintf('ALERT: %s\n', line(2:length(line)));
-            
-        % Test identifier recieved
+
+        % Test identifier received
         case '@'
             fprintf('Beginning test %s\n', line(2));
-            
-        % Data line recieved
+
+        % Data line received
         case '#'
             % TODO : Write data lines to the appropriate output file
-            
+
         % End of a test without a timeout
         case '$'
             should_end = 1;
-            
+
         % Undefined behavior
         otherwise
-            fprintf('Undefined message type recieved');
-        
+            fprintf('Undefined message type received');
+
     end
 end

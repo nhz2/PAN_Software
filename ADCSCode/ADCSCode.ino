@@ -192,6 +192,7 @@ void test_x() {
   empty_serial();
   int starttime= millis();
   while((millis()-starttime)<10000) {
+    Serial.print("#" + String(millis()) + ",");
     readspeed= analogRead(ao1);
     delay(100);
     Serial.println(readspeed);

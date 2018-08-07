@@ -31,11 +31,9 @@ public:
    */
   AD5254(i2c_t3 &i2c_wire, uint8_t i2c_addr);
 
-  /*!Sets and returns the RDAC settings*/
-  void set_rdac(uint8_t rdac0, uint8_t rdac1, uint8_t rdac2);
-  uint8_t get_rdac0();
-  uint8_t get_rdac1();
-  uint8_t get_rdac2();
+  /*!Sets and returns the RDAC settings of the first 3 pots*/
+  void set_rdac(uint8_t rdac[3]);
+  uint8_t[3] get_rdac0();
 
   /*!if sent i2c message to read rdacs
   updates value of rdacs*/

@@ -70,6 +70,7 @@ void setup() {
 #ifdef TESTING
   // Charactar testing code loop
   while(1) {
+    Serial.println("$Ready for test charactar input");
     while(Serial.available() < 1);
     unsigned char code = Serial.read();
     empty_serial();
@@ -98,7 +99,7 @@ void loop() {
  *  To stop the test send any byte over serial.
  */
 void test_ssa(unsigned long read_delay) {
-  // Data printing function within the scope of this function
+  // Data printing function
   static auto const data_line = []() {
     Serial.print("#" + String(millis()) + ",");
     ssa::verbose_output();
@@ -113,6 +114,39 @@ void test_ssa(unsigned long read_delay) {
   } while(!Serial.available());
   // Ensure serial is flushed and return
   empty_serial();
+}
+
+/*! Test case 'm' runs magnetic torque rod tests on their own. The test records
+ *  magnetometer data on the 3 IMUs monitoring the MTRs. The MTRs are also
+ *  actuated in the forward, reverse, and control modes for about one second
+ *  each. The data is written over serial in the following manner:
+ *    #op1,pwm1,magz1,err1,op2,...,magz3,err3
+ *  To stop the test send any byte over serial.
+ */
+void test_mtr(unsigned long read_delay) {
+  // Data printing function
+  static auto const data_line = []() {
+    Serial.print("#" + String(millis()) + ",");
+    mtr::verbose_output();
+    Serial.println();
+  };
+  // Print output and read until serial input recieved
+  MTR_OPERATION ops[3] = {
+    MTR_OPERATION::FORWARD, MTR_OPERATION::REVERSE, MTR_OPERATION::CONTROL
+  };
+  unsigned int i = 0;
+  while(true) {
+    for(unsigned int i = 0; i < 67; i++) { // 67 gives ~1 sec periods
+      mtr::actuate(ops[i], ops[i], ops[i]);
+      data_line();
+      delay(15);
+      if(Serial.available()) {
+        empty_serial();
+        return;
+      }
+    }
+    i %= 3;
+  }
 }
 
 void test_gyro() {
@@ -165,15 +199,15 @@ void test_x() {
   float speedA;
   int Aread = 14;
   float voltageA;
-  int gate=0;
+  //int gate=0;
   int gate1=0;
   int gate2=0;
   int gate3=0;
-  int detumble_cmd;
+  //int detumble_cmd;
   float max_speed=2000.0;
   int min_speed_cmd=29;
   int max_speed_cmd=230;
-  int speed_cmd=30;
+  //int speed_cmd=30;
   int max_accel=2000;
   int accel=0;
   int accel_cmd=255;
@@ -256,6 +290,11 @@ void test_on_char(unsigned char code) {
       Serial.println("@s");
       test_ssa(500);
       break;
+    // Magnetic torque rods only test
+    case 'm':
+      Serial.println("@m");
+      test_mtr(15);
+      break;
     // Performs a gyroscope only test
     case 'g':
       Serial.println("@g");
@@ -266,12 +305,12 @@ void test_on_char(unsigned char code) {
       Serial.println("@p");
       test_pot();
       break;
-      // DAC only test
+    // DAC only test
     case 'd':
       Serial.println("@d");
       test_dac();
       break;
-      //Motor x test
+    // Motor x test
     case 'x':
       Serial.println("@x");
       test_x();

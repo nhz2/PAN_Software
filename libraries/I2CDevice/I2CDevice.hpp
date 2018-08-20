@@ -19,12 +19,12 @@ public:
 
    /*! Set this device's I2C timeout in milliseconds */
   inline void i2c_set_timeout(unsigned long i2c_timeout) {
-    this->i2c_timeout = i2c_timeout;
+    this->i2c_timeout = i2c_timeout * 1000;
   }
 
   /*! Returns this devices I2C timeout in milliseconds */
   inline uint8_t i2c_get_timeout() const {
-    return this->i2c_timeout;
+    return this->i2c_timeout / 1000;
   }
 
 protected:
@@ -73,7 +73,7 @@ protected:
 
   /*! Request len bytes of data on this bus */
   inline void i2c_request_from(unsigned int len, i2c_stop s = I2C_STOP) {
-    this->i2c_error |= this->i2c_wire.requestFrom(this->i2c_addr, len, s, this->i2c_timeout);
+    this->i2c_error |= (this->i2c_wire.requestFrom(this->i2c_addr, len, s, this->i2c_timeout) == 0);
   }
 
   /*! Sends a data request on this bus (non-blocking version of above) */

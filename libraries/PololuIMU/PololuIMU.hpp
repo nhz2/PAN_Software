@@ -121,6 +121,7 @@ private:
 class LSM6DS33 : public I2CDevice{
   // register addresses from
   //https://github.com/pololu/lsm6-arduino/blob/master/LSM6.h
+  public:
     enum regAddr
     {
       FUNC_CFG_ACCESS   = 0x01,
@@ -194,7 +195,7 @@ class LSM6DS33 : public I2CDevice{
     };
 
 
-public:
+
   /*! Constructs a LSM6 on the specified wire and with the given
    *  address and with the given odrs.
    default states:
@@ -320,15 +321,17 @@ public:
   int16_t xl_y() const;
   int16_t xl_z() const;
 
+  //from https://github.com/pololu/lsm6-arduino/blob/master/LSM6.h
+  void writeReg(regAddr reg, uint8_t value);
+  uint8_t readReg(regAddr reg);
+
 
 
 
 
 
 private:
-  //from https://github.com/pololu/lsm6-arduino/blob/master/LSM6.h
-  void writeReg(regAddr reg, uint8_t value);
-  uint8_t readReg(regAddr reg);
+
 
   //Configuration settings
 

@@ -188,7 +188,59 @@ void test_dac() {
   analogWrite(A22, 4050);
   analogWrite(A21, 4050);
   while(true){}
+}
 
+
+/*! Test for simulink filters of imu data
+    Data written to serial when a serial query of 'n' is made
+    from the query block in simulink.
+
+    The data is formated as a comma sepperated list of ints
+      #new_G,Gx,Gy,Gz,new_M,Mx,My,Mz,new_XL,XLx,XLy,XLz/n
+    where new_* is 0 if no new data is available,
+    and 1 if the data is valid .
+      */
+
+void test_imu_filter() {
+  //start up gyro, accel, and mag.
+  LSM6DS33 mygyro(Wire,DS33_SA0_LOW_ADDRESS,4,4);
+  //mygyro.i2c_set_timeout(1000);
+  LIS3MDL mymag(Wire,LIS3MDL_ADDR_LOW);
+  delay(500);
+  mymag.set_sample_frequency(LIS3MDL_SF_80);
+  mymag.i2c_set_timeout(100);
+  mygyro.i2c_set_timeout(100);
+  delay(100);
+  mymag.set_xy_performance(LIS3MDL_PERF_ULTRA);
+  mymag.set_z_performance(LIS3MDL_PERF_ULTRA);
+  mygyro.power_up();
+  mymag.read();
+  delay(100);
+
+  empty_serial();
+  while(1){
+    //wait until a n is recieved
+    while(!('n'==Serial.read()));
+    //wait until gyro data is ready
+    while(!(mygyro.readReg(mygyro.STATUS_REG)&2)){}
+    mygyro.read();
+    Serial.print("#");
+    Serial.print(String((int)mygyro.get_tda())+",");
+    Serial.print(String(mygyro.g_x())+",");
+    Serial.print(String(mygyro.g_y())+",");
+    Serial.print(String(mygyro.g_z())+",");
+
+    mymag.read();
+    Serial.print("1,");
+    Serial.print(String(mymag.x())+",");
+    Serial.print(String(mymag.y())+",");
+    Serial.print(String(mymag.z())+",");
+    Serial.print(String((int)mygyro.get_xlda())+",");
+    Serial.print(String(mygyro.xl_x())+",");
+    Serial.print(String(mygyro.xl_y())+",");
+    Serial.print(String(mygyro.xl_z()));
+    Serial.println();
+  }
 }
 
 void test_x() {
@@ -314,6 +366,11 @@ void test_on_char(unsigned char code) {
     case 'x':
       Serial.println("@x");
       test_x();
+      break;
+      //imu test
+    case 'i':
+      Serial.println("@i");
+      test_imu_filter();
       break;
     // Unrecognized charactar code
     default:

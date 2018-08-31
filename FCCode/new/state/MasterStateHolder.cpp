@@ -1,6 +1,7 @@
 #include <iostream>
 #include <EEPROM.h>
 #include "MasterStateHolder.h"
+#include "HardwareAvailabilityTable.h"
 
 using namespace PAN;
 
@@ -14,16 +15,16 @@ MasterStateHolder::MasterStateHolder() {
         havt.set_device_functional(device_list.at(i)) = false;
     }
 
-    // Load and rewrite number of reboots that have occurred from EEPROM. The
-    // number of reboots is stored in the first two bytes of the EEPROM in little-endian
-    // format.
-    number_of_reboots = EEPROM.read(0x00) << 8 + EEPROM.read(0x01);
+    // Load and rewrite number of reboots that have occurred from EEPROM. The number of 
+    // reboots is stored in the first two bytes of the EEPROM in little-endian format.
+    number_of_reboots = eeprom.get_number_of_reboots();
     number_of_reboots++;
-    EEPROM.write(0x00, number_of_reboots >> 8);
-    EEPROM.write(0x01, number_of_reboots);
+    eeprom.set_number_of_reboots(number_of_reboots);
+
+    // If the current initialization is due to a reboot fault, store the fault.
 }
 
-HAVT const &MasterStateHolder::get_havt()
+HardwareAvailabilityTable const &MasterStateHolder::get_havt()
 {
     return havt;
 }
@@ -32,6 +33,6 @@ void MasterStateHolder::set_state(MasterStateHolder::State state) {
     fsm_state = state;
 }
 
-State MasterStateHolder::get_state() {
+MasterStateHolder::State MasterStateHolder::get_state() {
     return fsm_state;
 }

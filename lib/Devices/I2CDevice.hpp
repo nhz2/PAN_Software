@@ -80,7 +80,7 @@ class I2CDevice : public Device {
   /** \brief Attempts a simple communication with the i2c device - e.g. reading
    *         a register with a known value. Returns true if the proper value is
    *         recieved. i2c related errors are queried in setup.
-   *  \returns true if the proper value was read and false otherwise  **/
+   *  \returns true if the proper value was read and false otherwise **/
   virtual bool i2c_ping() = 0;
   /** \brief Constructs an i2c device on the specified wire, with the given
    *         address, and a default timeout values of 0 - i.e. a timeout never

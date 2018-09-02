@@ -28,11 +28,6 @@ class Device {
    *  \returns True if device is responding to communications, false otherwise.
    * **/
   virtual bool dev_is_functional() const = 0;
-  /** \brief Performs the device's single component test. This test outputs a
-   *         String in a csv file format. See the actual function implementation
-   *         for more details.
-   *  \returns csv file format String **/
-  virtual String dev_sc_test() = 0;
   /** \brief Attempts to reset a non-functional device. All error state
    *         variables should be reset. In most cases, this should only be
    *         be called as the result of a ground originated command. **/
@@ -41,6 +36,11 @@ class Device {
    *         cases, this should only be called as the result of a ground
    *         originated command. **/
   virtual void dev_disable() = 0;
+  /** \brief Performs the device's single component test. This test outputs a
+   *         String in a csv file format. See the actual function implementation
+   *         for more details.
+   *  \returns csv file format String **/
+  virtual String dev_sc_test() = 0;
 };
 }  // namespace DEVICE_V1
 }  // namespace Devices

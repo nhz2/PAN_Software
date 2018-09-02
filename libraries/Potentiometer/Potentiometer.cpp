@@ -53,7 +53,7 @@ bool AD5254::write_block(){
     rdac[2]
   };
   i2c_pop_errors();
-  i2c_write_bytes(data,4); 
+  i2c_write_bytes(data,4);
   // Process potential configuration errors
   if(i2c_pop_errors())
     return false;

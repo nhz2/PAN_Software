@@ -42,22 +42,29 @@
  */
 #include <i2c_t3.h>
 
+/* The number of times an i2c communication can fail before the device is
+ * considered not functional. */
+#define I2CDEVICE_DISABLE_AT 3
+
 namespace Devices {
 
 inline namespace I2CDEVICE_V1 {
 /** Abstract class from which all I2C devices are derived. **/
 class I2CDevice : public Device {
  public:
-  /** \brief The device is considered to be functional if less than five errors
-   *         have occurred in a row.
+  /** \brief Attempts to call i2c_ping up to I2CDEVICE_DISABLE_AT times.
+   *  \returns true if a succesful ping happened and false otherwise. **/
+  virtual bool dev_setup() override;
+  /** \brief The device is considered to be functional if less than
+   *         I2CDEVICE_DISABLE_AT errors have occurred in a row.
    *  \returns True if device is working properly, false otherwise.. **/
-  virtual bool is_functional() override;
+  virtual bool dev_is_functional() override;
   /** \brief Wipes error history variables clean. Must be called from a function
    *         that overrides this. **/
-  virtual void cmd_reset() override;
+  virtual void dev_reset() override;
   /** \brief Forces error history variables to broken state. Must be called from
    *         a function that overrides this. **/
-  virtual void cmd_disable() override;
+  virtual void dev_disable() override;
   /** \brief Sets this device's I2C timeout in milliseconds. **/
   inline void i2c_set_timeout(unsigned long i2c_timeout);
   /** \brief  Gets the current value of i2c_timeout in milliseconds.
@@ -70,6 +77,11 @@ class I2CDevice : public Device {
   inline bool i2c_data_is_valid() const;
 
  protected:
+  /** \brief Attempts a simple communication with the i2c device - e.g. reading
+   *         a register with a known value. Returns true if the proper value is
+   *         recieved. i2c related errors are queried in setup.
+   *  \returns true if the proper value was read and false otherwise  **/
+  virtual bool i2c_ping() = 0;
   /** \brief Constructs an i2c device on the specified wire, with the given
    *         address, and a default timeout values of 0 - i.e. a timeout never
    *         happens. **/

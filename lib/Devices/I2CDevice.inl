@@ -16,15 +16,23 @@
 namespace Devices {
 
 namespace I2CDEVICE_V1 {
-bool I2CDevice::is_functional() const { return (this->error_count < 5); }
+bool I2CDevice::dev_setup() {
+  for (unsigned int i = 0; i < I2CDEVICE_DISABLE_AT; i++)
+    if (this->i2c_ping()) return true;
+  return false;
+}
 
-void I2CDevice::cmd_reset() {
+bool I2CDevice::dev_is_functional() const {
+  return (this->error_count < I2CDEVICE_DISABLE_AT);
+}
+
+void I2CDevice::dev_reset() {
   this->error_count = 0;
   this->recent_errors = false;
 }
 
-void I2CDevice::cmd_disable() {
-  this->error_count = 5;
+void I2CDevice::dev_disable() {
+  this->error_count = I2CDEVICE_DISABLE_AT;
   this->recent_errors = true;
 }
 

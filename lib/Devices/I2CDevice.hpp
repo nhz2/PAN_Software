@@ -44,13 +44,13 @@
 
 namespace Devices {
 
-inline namespace v1 {
+inline namespace I2CDEVICE_V1 {
 /** Abstract class from which all I2C devices are derived. **/
 class I2CDevice : public Device {
  public:
   /** \brief The device is considered to be functional if less than five errors
    *         have occurred in a row.
-   *  \returns true if the device is functional and false otherwise. **/
+   *  \returns True if device is working properly, false otherwise.. **/
   virtual bool is_functional() override;
   /** \brief Wipes error history variables clean. Must be called from a function
    *         that overrides this. **/
@@ -154,7 +154,7 @@ class I2CDevice : public Device {
   /** Error history tracker **/
   bool recent_errors;
 };
-}  // namespace v1
+}  // namespace I2CDEVICE_V1
 }  // namespace Devices
 
 #include "I2CDevice.inl"

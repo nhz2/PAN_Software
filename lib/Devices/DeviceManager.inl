@@ -17,7 +17,7 @@
 
 namespace Devices {
 
-namespace v1 {
+namespace DEVICEMANAGER_V1 {
 DeviceManager::DeviceManager(std::vector<Device *> const &devices)
     : devices(devices) {
   // empty
@@ -38,7 +38,7 @@ inline void for_each(void (*func)(DeviceType &), std::size_t s = 0,
   for (std::size_t = i, i < e; i++)
     func(*static_cast<DeviceType *>(this->devices[i]));
 }
-}  // namespace v1
+}  // namespace DEVICEMANAGER_V1
 }  // namespace Devices
 
 #endif

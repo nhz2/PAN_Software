@@ -18,7 +18,7 @@
 
 namespace Devices {
 
-inline namespace v1 {
+inline namespace DEVICE_V1 {
 /** Interface adhered to by all devices. **/
 class Device {
  public:
@@ -43,7 +43,7 @@ class Device {
    *         originated command. **/
   virtual void cmd_disable() = 0;
 };
-}  // namespace v1
+}  // namespace DEVICE_V1
 }  // namespace Devices
 
 #endif

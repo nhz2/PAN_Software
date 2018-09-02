@@ -34,7 +34,7 @@
 
 namespace Devices {
 
-inline namespace v1 {
+inline namespace DEVICEMANAGER_V1 {
 /** Data structure to hold all devices interface with a given microcontroller.
  *  The devices are mapped with a number (i.e. there location in the provided
  *  vector reference). **/
@@ -60,7 +60,7 @@ class DeviceManager {
   /** Device pointer vector. **/
   std::vector<Device *> const &devices;
 };
-}  // namespace v1
+}  // namespace DEVICEMANAGER_V1
 }  // namespace Devices
 
 #include "DeviceManager.inl"

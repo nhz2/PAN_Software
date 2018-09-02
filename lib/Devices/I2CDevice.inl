@@ -15,7 +15,7 @@
 
 namespace Devices {
 
-namespace v1 {
+namespace I2CDEVICE_V1 {
 bool I2CDevice::is_functional() const { return (this->error_count < 5); }
 
 void I2CDevice::cmd_reset() {
@@ -136,7 +136,7 @@ inline uint8_t i2c_peek() {
   this->recent_errors = (this->recent_errors || err);
   return (uint8_t)(val && 0xFF);
 }
-}  // namespace v1
+}  // namespace I2CDEVICE_V1
 }  // namespace Devices
 
 #endif

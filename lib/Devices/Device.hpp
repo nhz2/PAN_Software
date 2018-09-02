@@ -14,8 +14,6 @@
 #ifndef PAN_DEVICES_DEVICE_HPP_
 #define PAN_DEVICES_DEVICE_HPP_
 
-#include <string>
-
 namespace Devices {
 
 inline namespace DEVICE_V1 {

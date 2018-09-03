@@ -58,7 +58,7 @@ namespace wheel {
 #ifdef VERBOSE
   /*! Outputs the operation modes and last pwm values to a csv style data line.
    *  The format of the line is as follows:
-   *    op1,pwm1,magz1,err1,op2,...,magz3,err3
+   *    speed read,ramp read, pot error count, for x, y, and z
    */
   void verbose_output() {
     for(unsigned int i = 0; i < 3; i++) {

@@ -46,6 +46,7 @@ void empty_serial() {
  */
 #include "mtr.hpp"
 #include "ssa.hpp"
+#include "wheel.hpp"
 
 void setup() {
 
@@ -57,12 +58,15 @@ void setup() {
   Wire1.begin(I2C_MASTER,0,I2C_PINS_37_38,I2C_PULLUP_EXT,400000,I2C_OP_MODE_ISR);
   Wire2.begin(I2C_MASTER,0,I2C_PINS_3_4,I2C_PULLUP_EXT,400000,I2C_OP_MODE_ISR);
   analogReadResolution(16);
+  analogWriteResolution(12);
+
   mtr::init();
   ssa::init();
+  wheel::init();
 
 #ifdef VERBOSE
   // Start serial port for verbose output
-  Serial.begin(9600);
+  Serial.begin(115200);
   // Output all initialization error alert messages
   ssa::verbose_error();
   mtr::verbose_error();
@@ -148,7 +152,7 @@ void test_pot() {
 
 void test_dac() {
   //from https://www.pjrc.com/teensy/teensy31.html
-  analogWriteResolution(12);
+
   analogWrite(A22, 4050);
   analogWrite(A21, 4050);
   while(true){}
@@ -156,58 +160,56 @@ void test_dac() {
 }
 
 void test_x() {
-  AD5254 pot(Wire1,AD5254_ADDR_1);
-
-  //pins
-  //int dio4;
-  int dio3= 39;//Enable CCW:			Digital Input 3			High active
-  int di2= 26;//Enable CW:			Digital Input 2			High active
-  int di1= 23;//PWM set speed 0 to 5000 rpm : 10% to 90%
-  //int ao2;
-  int ao1= A14;//speedread
-  //int ai2neg;
-  //int ai2pos;
-  //int ai1neg;
-  //int ai1pos= A1;//ramp input
-
+  wheel::WheelUnit w= wheel::wheels[0];
   //settings
-  int setspeed= 100;
+  int speed0= 1000;//410 to 3685
+  int speed1= 2000;//410 to 3685
+  int setramp= 100;//0 to 255
+  int test_time= 60000;//ms to test for
+
+  //varibles
+  int setspeed= speed0;
   int readspeed= 0;
-  int setramp= 100;
   int readramp= 0;
+  int starttime;
 
-  pinMode(di1,OUTPUT);
-  pinMode(di2,OUTPUT);
-  pinMode(dio3, OUTPUT);
-  pinMode(ao1, INPUT);
-  digitalWrite(di2, LOW);
-  digitalWrite(dio3, HIGH);
-
+  //initailize motor
+  digitalWrite(w.en_cw_pin, HIGH);
+  digitalWrite(w.en_ccw_pin, LOW);
   empty_serial();
+  w.set_ramp.set_rdac(setramp, 0, 0);
+  w.set_ramp.write_block();
 
-  pot.set_rdac(50, 0, 0);
-  pot.write_block();
-  analogWrite(di1, 225);
-
+  setspeed= speed0;
+  analogWrite(w.set_speed_pin, setspeed);
   empty_serial();
-  int starttime= millis();
-  while((millis()-starttime)<10000) {
-    Serial.print("#" + String(millis()) + ",");
-    readspeed= analogRead(ao1);
-    delay(100);
-    Serial.println(readspeed);
-  }
-  empty_serial();
-
-  pot.set_rdac(50, 0, 0);
-  pot.write_block();
-  analogWrite(di1, 25);
   starttime= millis();
-  while((millis()-starttime)<10000) {
-    readspeed= analogRead(ao1);
-    delay(100);
-    Serial.println(readspeed);
+  while((millis()-starttime)<test_time/2) {
+    readspeed= analogRead(w.read_speed_pin);
+    readramp= analogRead(w.read_ramp_pin);
+    Serial.print(String(millis()) + ",");
+    Serial.print(String(setspeed) + ",");
+    Serial.print(String(readspeed) + ",");
+    Serial.println(String(readramp) + ",");
+    delayMicroseconds(100);
+    Serial.flush();
   }
+
+  setspeed= speed1;
+  analogWrite(w.set_speed_pin, setspeed);
+  empty_serial();
+  starttime= millis();
+  while((millis()-starttime)<test_time/2) {
+    readspeed= analogRead(w.read_speed_pin);
+    readramp= analogRead(w.read_ramp_pin);
+    Serial.print(String(millis()) + ",");
+    Serial.print(String(setspeed) + ",");
+    Serial.print(String(readspeed) + ",");
+    Serial.println(String(readramp) + ",");
+    delayMicroseconds(100);
+    Serial.flush();
+  }
+  empty_serial();
 }
 
 /*! Performs a test depending on which charactar code is fed to the function */

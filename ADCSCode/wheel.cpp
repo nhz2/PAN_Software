@@ -8,7 +8,7 @@
 // Pathfinder for Autonomous Navigation
 // Space Systems Design Studio
 // Cornell University
-//
+// see http://mb-raw.blogspot.com/2018/02/teensy-and-pwm.html for pwm frequency
 
 #include "wheel.hpp"
 
@@ -25,5 +25,7 @@ void wheel::init() {
     pinMode(wheel::wheels[i].set_speed_pin,OUTPUT);
     pinMode(wheel::wheels[i].read_speed_pin, INPUT);
     pinMode(wheel::wheels[i].read_ramp_pin, INPUT);
+    //http://mb-raw.blogspot.com/2018/02/teensy-and-pwm.html
+    analogWriteFrequency(wheel::wheels[i].set_speed_pin, 1000);
   }
 }

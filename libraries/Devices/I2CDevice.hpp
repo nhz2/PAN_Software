@@ -40,7 +40,7 @@
 /* Note that I2C_AUTO_RETRY should be enabled - I2CDevice makes no calls to
  * resetBus internally.
  */
-#include <i2c_t3.h>
+#include <i2c_t3_pan.h>
 
 /* The number of times an i2c communication can fail before the device is
  * considered not functional. */
@@ -54,17 +54,17 @@ class I2CDevice : public Device {
  public:
   /** \brief Attempts to call i2c_ping up to I2CDEVICE_DISABLE_AT times.
    *  \returns true if a succesful ping happened and false otherwise. **/
-  virtual bool dev_setup() override;
+  virtual bool setup() override;
   /** \brief The device is considered to be functional if less than
    *         I2CDEVICE_DISABLE_AT errors have occurred in a row.
    *  \returns True if device is working properly, false otherwise.. **/
-  virtual bool dev_is_functional() override;
+  virtual bool is_functional() const override;
   /** \brief Wipes error history variables clean. Must be called from a function
    *         that overrides this. **/
-  virtual void dev_reset() override;
+  virtual void reset() override;
   /** \brief Forces error history variables to broken state. Must be called from
    *         a function that overrides this. **/
-  virtual void dev_disable() override;
+  virtual void disable() override;
   /** \brief Sets this device's I2C timeout in milliseconds. **/
   inline void i2c_set_timeout(unsigned long i2c_timeout);
   /** \brief  Gets the current value of i2c_timeout in milliseconds.

@@ -13,9 +13,9 @@
 #include "ADS1015.hpp"
 
 namespace ADS1015_V1 {
-String ADS1015::dev_sc_test() {
-  return String(this->read(0)) + "," + String(this->read(1)) + "," +
-         String(this->read(2)) + "," + String(this->read(3));
+void ADS1015::single_comp_test() {
+  Serial.print(String(this->read(0)) + "," + String(this->read(1)) + "," +
+               String(this->read(2)) + "," + String(this->read(3)));
 }
 
 bool ADS1015::i2c_ping() {

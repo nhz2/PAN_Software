@@ -16,7 +16,7 @@
 #include <I2CDevice.hpp>
 
 /** Possible address values for the ADS1015. **/
-enum ADS1015_ADDR { GND = 0x48, VDD = 0x49, SDA = 0x4A, SCL = 0x4B };
+enum ADS1015_ADDR { GND = 0x48, VDD = 0x49, SSDA = 0x4A, SSCL = 0x4B };
 
 /** Possible gain values for the ADS1015. **/
 enum ADS1015_GAIN {
@@ -49,7 +49,7 @@ class ADS1015 : public Devices::I2CDevice {
    * readings on all four input lines. The line format is as follows:
    *           a0,a1,a2,a3
    *  \returns csv string **/
-  virtual String dev_sc_test() override;
+  virtual void single_comp_test() override;
   /** \brief Pings the ADS1015 by readings the conversion output register and
    *         ensuring the least significant bits are zero - this is guranteed by
    *         the data sheet.

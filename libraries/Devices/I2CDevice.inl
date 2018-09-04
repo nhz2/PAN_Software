@@ -16,22 +16,22 @@
 namespace Devices {
 
 namespace I2CDEVICE_V1 {
-bool I2CDevice::dev_setup() {
+bool I2CDevice::setup() {
   for (unsigned int i = 0; i < I2CDEVICE_DISABLE_AT; i++)
     if (this->i2c_ping()) return true;
   return false;
 }
 
-bool I2CDevice::dev_is_functional() const {
+bool I2CDevice::is_functional() const {
   return (this->error_count < I2CDEVICE_DISABLE_AT);
 }
 
-void I2CDevice::dev_reset() {
+void I2CDevice::reset() {
   this->error_count = 0;
   this->recent_errors = false;
 }
 
-void I2CDevice::dev_disable() {
+void I2CDevice::disable() {
   this->error_count = I2CDEVICE_DISABLE_AT;
   this->recent_errors = true;
 }
@@ -98,11 +98,11 @@ inline void I2CDevice::i2c_request_from(std::size_t len, i2c_stop s) {
   this->recent_errors = (this->recent_errors || err);
 }
 
-inline void I2CDevice::i2c_send_request(std:; size_t len, i2c_stop s) {
+inline void I2CDevice::i2c_send_request(std::size_t len, i2c_stop s) {
   this->wire.sendRequest(this->addr, len, s);
 }
 
-inline bool I2CDevice::i2c_done() const { return (this->wire.done() == 1) }
+inline bool I2CDevice::i2c_done() const { return (this->wire.done() == 1); }
 
 inline void I2CDevice::i2c_finish() {
   bool err = (this->wire.finish(this->timeout) == 0);
@@ -120,7 +120,9 @@ inline void I2CDevice::i2c_write(T const *data, std::size_t len) {
   this->recent_errors = (this->recent_errors || err);
 }
 
-inline void I2CDevice::i2c_available() const { return this->wire.available(); }
+inline unsigned int I2CDevice::i2c_available() const {
+  return this->wire.available();
+}
 
 // TODO : Double check that this function is implemented properly
 inline uint8_t I2CDevice::i2c_read() {
@@ -138,7 +140,7 @@ inline void I2CDevice::i2c_read(T *data, std::size_t len) {
 }
 
 // TODO : Double check that this function is implemented properly
-inline uint8_t i2c_peek() {
+inline uint8_t I2CDevice::i2c_peek() {
   int val = this->wire.peek();
   bool err = (val == -1);
   this->recent_errors = (this->recent_errors || err);

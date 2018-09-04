@@ -3,8 +3,6 @@
 
 namespace PAN {
 class Scheduler {
-  private:
-    std::map<long, Event> events; // Map key is timestamp of when event is scheduled
   public:
     struct Event {
         long timestamp_event_added;
@@ -13,6 +11,7 @@ class Scheduler {
         // Device action
         // Action parameters
         // 
+        ~Event();
     };
     /** \brief Adds an event to the proper position in the schedule.
      * \param t The time at which the event will be executed.
@@ -40,5 +39,8 @@ class Scheduler {
      *  \returns Number of events. Since the return type is an 8-bit integer, this
      * sets a maximum of 255 events in the schedule. **/
     uint8_t number_of_events();
+
+  private:
+    std::map<long, Event> events; // Map key is timestamp of when event is scheduled
 };
 }

@@ -32,7 +32,6 @@ class MasterStateHolder {
       // PAN-specific modes
       NEAR_FIELD_RENDEZVOUS,
       DOCKED,
-      LARGE_SLEW_MANUEVERS
     };
 
     /** Constructor. **/

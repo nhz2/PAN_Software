@@ -17,11 +17,11 @@ MasterStateHolder::MasterStateHolder() {
 
     // Load and rewrite number of reboots that have occurred from EEPROM. The number of 
     // reboots is stored in the first two bytes of the EEPROM in little-endian format.
+    eeprom.increment_number_of_reboots(number_of_reboots);
     number_of_reboots = eeprom.get_number_of_reboots();
-    number_of_reboots++;
-    eeprom.set_number_of_reboots(number_of_reboots);
 
     // If the current initialization is due to a reboot fault, store the fault.
+    // TODO
 }
 
 HardwareAvailabilityTable const &MasterStateHolder::get_havt()

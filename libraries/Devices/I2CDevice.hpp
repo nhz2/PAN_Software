@@ -111,7 +111,7 @@ class I2CDevice : public Device {
    *         requested. Any error will be recorded in the recent error history
    *         variable. This is a blocking call. **/
   template <typename T>
-  void i2c_recieve_data(T *data, std::size_t len, i2c_stop s = I2C_STOP);
+  void i2c_receive_data(T *data, std::size_t len, i2c_stop s = I2C_STOP);
   /** \brief See Wire.beginTransmission in i2c_t3. **/
   inline void i2c_begin_transmission();
   /** \brief See Wire.endTransmission in i2c_t3. Any error will be recorded in

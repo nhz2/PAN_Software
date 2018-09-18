@@ -41,7 +41,7 @@ void I2CDevice::i2c_transmit_data(T const *data, std::size_t len, i2c_stop s) {
 }
 
 template <typename T>
-void I2CDevice::i2c_recieve_data(T *data, std::size_t len, i2c_stop s) {
+void I2CDevice::i2c_receive_data(T *data, std::size_t len, i2c_stop s) {
   this->i2c_request_from(len * sizeof(T), s);
   if (this->i2c_peek_errors()) return;
   for (std::size_t i = 0; i < len * sizeof(T); i++)

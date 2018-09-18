@@ -48,6 +48,13 @@ enum HardFaults
     CURRENT_DRAW_OUT_OF_BOUNDS
 };
 
+// Faults that necessitate the spacecraft to reboot.
+// TODO Add more faults.
+enum RebootFaults {
+    MEMORY_LEAK,
+
+};
+
 // Faults that necessitate the system going into critical power mode.
 // TODO Add descriptions for each of these.
 enum CriticalFaults {

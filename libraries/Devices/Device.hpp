@@ -27,7 +27,7 @@ class Device {
   /** \brief Verifies the device is responding to communications.
    *  \returns True if device is responding to communications, false otherwise.
    * **/
-  virtual bool dev_is_functional() const = 0;
+  virtual bool dev_is_functional() = 0;
   /** \brief Attempts to reset a non-functional device. All error state
    *         variables should be reset. In most cases, this should only be
    *         be called as the result of a ground originated command. **/

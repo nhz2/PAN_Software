@@ -3,7 +3,22 @@
 
 using namespace PAN::Devices;
 
-Gomspace::Gomspace(i2c_t3 &i2c_wire, uint8_t i2c_addr) : I2CDevice(wire, addr, timeout) {}
+Gomspace::Gomspace(i2c_t3 &i2c_wire, uint8_t i2c_addr) : I2CDevice(wire, i2c_addr, 0) {}
+
+// Blank because we can't ever really set up the Gomspace!
+Gomspace::dev_setup() {}
+
+Gomspace::dev_is_functional() { return _ping(0x00); }
+
+Gomspace::dev_reset() { _reboot(); }
+
+// Blank because we can't ever really disable the Gomspace!
+Gomspace::dev_disable() {}
+
+Gomspace::dev_sc_test() {
+    // TODO
+    return String("");
+}
 
 void Gomspace::_get_hk_2() {
     uint8_t PORT_BYTE = 0x08;
@@ -171,4 +186,22 @@ void Gomspace::_config3(const eps_config3_t &c) {
     uint8_t command[1] = {PORT_BYTE};
     i2c_write(command, 1);
     i2c_write(config3_struct, sizeof(eps_config3_t));
+}
+
+bool Gomspace::_ping(uint8_t value) {
+    uint8_t PORT_BYTE = 0x01;
+    uint8_t command[1] = {PORT_BYTE};
+    i2c_write(command, 1);
+
+    uint8_t response;
+    i2c_read(&response, 1);
+    return value == response;
+}
+
+void Gomspace::_reboot() {
+    uint8_t PORT_BYTE = 0x04;
+    uint8_t MAGIC[4] = {0x80,0x07,0x80,0x07};
+    uint8_t command[1] = {PORT_BYTE};
+    i2c_write(command, 1);
+    i2c_write(command, 4);
 }

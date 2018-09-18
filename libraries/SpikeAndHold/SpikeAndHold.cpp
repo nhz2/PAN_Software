@@ -64,29 +64,35 @@ bool SpikeAndHold::fire_thrusters(const SpikeAndHold::FiringSchedule &schedule) 
 }
 
 bool SpikeAndHold::_schedule_is_correct(const SpikeAndHold::FiringSchedule &schedule) {
-    //// Ensure # and type of openings = # and type of closings
-    // Ensure # of openings = # of closings
-    if (schedule.openings.size() != schedule.closings.size()) return false;
-    // Ensure each valve that's opened is also closed.
-    auto openings_it = schedule.openings.begin();
-    while (openings_it != schedule.openings.end()) {
-        bool closing_found = false;
+    uint32_t **o = schedule.openings;
+    uint32_t **c = schedule.closings;
+    uint8_t o_size = sizeof(o) / sizeof(uint32_t);
+    uint8_t c_size = sizeof(c) / sizeof(uint32_t);
+    if (o_size != c_size) return false;
 
-        auto closings_it = schedule.closings.begin();
-        do {
-            if (closings_it->second == openings_it->second) {
-                schedule.closings.erase(closings_it);
-                closing_found = true;
-            }
-            closings_it++;
-        } while (closings_it != schedule.closings.end());
-        
-        if (!closing_found) return false;
-        openings_it++;
+    //// Ensure both lists are ordered, and that all valves that would be opened are valid
+    // Ensure openings are ordered and are valid valves
+    for(uint8_t i = 1; i < o_size; i++) {
+        if (o[i][0] <= o[i - 1][0]) return false;
+        if (o[i][1] >= NUM_VALVES) return false;
     }
+    // Ensure closings are ordered and are valid valves
+    for(uint8_t i = 1; i < c_size; i++) {
+        if (c[i][0] <= c[i - 1][0]) return false;
+        if (c[i][1] >= NUM_VALVES) return false;
+    }
+
+    //// Ensure # of openings per valve = # of closings per valve
+    uint8_t num_openings[NUM_VALVES]; // Number of times valve i is opened
+    uint8_t num_closings[NUM_VALVES]; // Number of times valve i is opened
+    for(uint8_t i = 0; i < NUM_VALVES; i++) { num_openings[i] = 0; num_closings[i] = 0; }
+    for(uint8_t i = 0; i < o_size; i++) { num_openings[o[i][1]]++; }
+    for(uint8_t i = 0; i < c_size; i++) { num_openings[c[i][1]]++; }
+    for(uint8_t i = 0; i < NUM_VALVES; i++) { if (num_openings[i] != num_closings[i]) return false; }
+
     //// Ensure last openings and closings are not beyond the micros() range.
-    uint32_t last_opening = schedule.openings.end()->second;
-    uint32_t last_closing = schedule.openings.end()->second;
+    uint32_t last_opening = o[o_size - 1][1];
+    uint32_t last_closing = c[c_size - 1][1];
     if (last_opening * 1000 > ULONG_MAX) return false;
     if (last_closing * 1000 > ULONG_MAX) return false;
 

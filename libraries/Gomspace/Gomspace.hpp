@@ -142,6 +142,11 @@ class Gomspace : public I2CDevice {
     void _config2_get();
     void _config2_set(const eps_config2_t &config);
     void _config3(uint8_t cmd);
+
+    bool _ping(uint8_t value);
+    void _reboot();
 };
 }
 }
+
+#endif

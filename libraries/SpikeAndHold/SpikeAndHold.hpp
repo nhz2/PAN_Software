@@ -12,8 +12,8 @@ namespace Devices {
                                              // [5]: Nozzle valve.
 
         struct FiringSchedule {
-            std::map<uint32_t, uint8_t> openings, // Map of valves that are opened, indexed (sorted) by time
-            std::map<uint32_t, uint8_t> closings, // Map of valves that are closed, indexed (sorted) by time
+            uint32_t **openings, // Map of valves that are opened, indexed (sorted) by time
+            uint32_t **closings, // Map of valves that are opened, indexed (sorted) by time
         };
         /** \brief Default constructor. Loads a set of hardcoded pins into the valve table.**/
         SpikeAndHold();

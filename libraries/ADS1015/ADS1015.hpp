@@ -54,7 +54,7 @@ class ADS1015 : public Devices::I2CDevice {
    *         ensuring the least significant bits are zero - this is guranteed by
    *         the data sheet.
    *  \returns true if the proper value was read and false otherwise **/
-  virtual bool i2c_ping();
+  virtual bool i2c_ping() override;
   /** \brief Sets up and ADC1015 IC on the specified wire with the given
    * address and alert pin. **/
   ADS1015(i2c_t3 &wire, ADS1015_ADDR addr, unsigned int alert_pin,
@@ -68,7 +68,7 @@ class ADS1015 : public Devices::I2CDevice {
   void set_sample_rate(ADS1015_SR sample_rate);
   /** \brief Returns the current sample rate of the ADS1015.
    *  \returns current sample rate value **/
-  ADS1015_SR get_sample_rate() const { return this->sample_rate; }
+  inline ADS1015_SR get_sample_rate() const { return this->sample_rate; }
   /** \brief Starts a conversion on the ADC1015 on the specified channel (0, 1,
    *         2, and 3 are valid inputs). The conversion can be completed with a
    *         call to end_read. This is a non-blocking call - you may even use

@@ -1,5 +1,5 @@
 //
-// Devices/DeviceTable.hpp
+// Devices/Device.hpp
 // PAN
 //
 // Contributors:

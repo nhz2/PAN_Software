@@ -10,32 +10,9 @@
 // Cornell Univeristy
 //
 
-#ifndef PAN_DEVICES_I2CDEVICE_INL_
-#define PAN_DEVICES_I2CDEVICE_INL_
-
 namespace Devices {
 
 namespace I2CDEVICE_V1 {
-bool I2CDevice::setup() {
-  for (unsigned int i = 0; i < I2CDEVICE_DISABLE_AT; i++)
-    if (this->i2c_ping()) return true;
-  return false;
-}
-
-bool I2CDevice::is_functional() const {
-  return (this->error_count < I2CDEVICE_DISABLE_AT);
-}
-
-void I2CDevice::reset() {
-  this->error_count = 0;
-  this->recent_errors = false;
-}
-
-void I2CDevice::disable() {
-  this->error_count = I2CDEVICE_DISABLE_AT;
-  this->recent_errors = true;
-}
-
 inline void I2CDevice::i2c_set_timeout(unsigned long i2c_timeout) {
   this->timeout = i2c_timeout * 1000;
 }
@@ -46,15 +23,6 @@ inline unsigned long I2CDevice::i2c_get_timeout() const {
 
 inline bool I2CDevice::i2c_data_is_valid() const {
   return this->error_count == 0;
-}
-
-I2CDevice::I2CDevice(i2c_t3 &wire, uint8_t addr, unsigned long timeout)
-    : wire(wire),
-      addr(addr),
-      timeout(timeout),
-      error_count(0),
-      recent_errors(false) {
-  // empty
 }
 
 inline bool I2CDevice::i2c_pop_errors() {
@@ -148,5 +116,3 @@ inline uint8_t I2CDevice::i2c_peek() {
 }
 }  // namespace I2CDEVICE_V1
 }  // namespace Devices
-
-#endif

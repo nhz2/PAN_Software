@@ -165,7 +165,7 @@ class I2CDevice : public Device {
   unsigned int error_count;
   /** Error history tracker **/
   bool recent_errors;
-};
+};  // namespace I2CDEVICE_V1
 }  // namespace I2CDEVICE_V1
 }  // namespace Devices
 

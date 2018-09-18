@@ -33,8 +33,9 @@
 #include <vector>
 
 namespace Devices {
-
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 inline namespace DEVICEMANAGER_V1 {
+#endif
 /** Data structure to hold all devices interface with a given microcontroller.
  *  The devices are mapped with a number (i.e. there location in the provided
  *  vector reference). **/
@@ -60,7 +61,9 @@ class DeviceManager {
   /** Device pointer vector. **/
   std::vector<Device *> const &devices;
 };
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 }  // namespace DEVICEMANAGER_V1
+#endif
 }  // namespace Devices
 
 #include "DeviceManager.inl"

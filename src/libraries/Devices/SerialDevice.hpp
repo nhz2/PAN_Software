@@ -21,8 +21,9 @@
 #include <HardwareSerial.h>
 
 namespace Devices {
-
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 namespace SERIALDEVICE_V1 {
+#endif
 class SerialDevice : public Device {
  public:
  protected:
@@ -40,7 +41,9 @@ class SerialDevice : public Device {
   /** Flag indicating the device isn't responding **/
   bool unresponsive;
 };
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 }  // namespace SERIALDEVICE_V1
+#endif
 }  // namespace Devices
 
 #endif

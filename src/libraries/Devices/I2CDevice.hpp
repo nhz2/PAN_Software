@@ -10,6 +10,9 @@
 // Cornell Univeristy
 //
 
+/** \addtogroup Libraries
+ *  @{ **/
+
 #ifndef PAN_DEVICES_I2CDEVICE_HPP_
 #define PAN_DEVICES_I2CDEVICE_HPP_
 
@@ -42,14 +45,18 @@
  */
 #include <i2c_t3_pan.h>
 
+/** \namespace Devices **/
+namespace Devices {
+
 /* The number of times an i2c communication can fail before the device is
  * considered not functional. */
 #define I2CDEVICE_DISABLE_AT 3
 
-namespace Devices {
-
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 inline namespace I2CDEVICE_V1 {
-/** Abstract class from which all I2C devices are derived. **/
+#endif
+/** \class I2CDevice
+ *  \brief Abstract class from which all i2c devices will be derived. **/
 class I2CDevice : public Device {
  public:
   /** \brief Attempts to call i2c_ping up to I2CDEVICE_DISABLE_AT times.
@@ -165,10 +172,14 @@ class I2CDevice : public Device {
   unsigned int error_count;
   /** Error history tracker **/
   bool recent_errors;
-};  // namespace I2CDEVICE_V1
+};
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 }  // namespace I2CDEVICE_V1
+#endif
 }  // namespace Devices
 
 #include "I2CDevice.inl"
 
 #endif
+
+/** @} **/

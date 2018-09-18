@@ -11,17 +11,36 @@
 // Cornell Univeristy
 //
 
+/** \addtogroup Libraries
+ *  @{ **/
+
 #ifndef PAN_DEVICES_DEVICE_HPP_
 #define PAN_DEVICES_DEVICE_HPP_
 
+/** \namespace Devices
+ *  \brief Contains all of the general device functionality shared between the
+ *         flight and ADCS computers.
+ *
+ *  This interface ensures the following functionality: a setup functions to be
+ *  called on device initiation, a function which specifies whether or not the
+ *  device is currently operating properly, a hard reset function, a function
+ *  to disable to device, and a function to print testing data over Serial. **/
 namespace Devices {
-
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 inline namespace DEVICE_V1 {
-/** Interface adhered to by all devices. **/
+#endif
+/** \interface Device
+ *  \brief Interface from which all peripherial devices will be derived.
+ *
+ *  This interface ensures that all peripherials in communication with a
+ *  flight computer have common functionality. This will be most useful for
+ *  communications downlinks and updates on the satellites health. **/
 class Device {
  public:
   /** \brief Sets up communication with the device and verifies
    *         the device is responding to communication attempts.
+   *
+   *
    *  \returns True if device is working properly, false otherwise. **/
   virtual bool setup() = 0;
   /** \brief Verifies the device is responding to communications.
@@ -42,7 +61,11 @@ class Device {
    *  \returns csv file format String **/
   virtual void single_comp_test() = 0;
 };
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 }  // namespace DEVICE_V1
+#endif
 }  // namespace Devices
 
 #endif
+
+/** @} **/

@@ -10,41 +10,43 @@
 // Cornell Univeristy
 //
 
+/** \addtogroup Libraries
+ * @{ **/
+
 #ifndef PAN_ADS1015_HPP_
 #define PAN_ADS1015_HPP_
 
 #include <I2CDevice.hpp>
 
-/** Possible address values for the ADS1015. **/
-enum ADS1015_ADDR { GND = 0x48, VDD = 0x49, SSDA = 0x4A, SSCL = 0x4B };
-
-/** Possible gain values for the ADS1015. **/
-enum ADS1015_GAIN {
-  TWO_THIRDS = 0x0000,
-  ONE = 0x0200,
-  TWO = 0x0400,  // Default
-  FOUR = 0x0500,
-  EIGHT = 0x0800,
-  SIXTEEN = 0x0A00
-};
-
-/** Possible sample rates for the ADS1015. **/
-enum ADS1015_SR {
-  SPS_128 = 0x0000,
-  SPS_250 = 0x0020,
-  SPS_490 = 0x0040,
-  SPS_920 = 0x0060,
-  SPS_1600 = 0x0080,  // Default
-  SPS_2400 = 0x00A0,
-  SPS_3300 = 0x00C0
-};
-
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 inline namespace ADS1015_V1 {
+#endif
 /** Class representing a ADS1015 IC. Please note their are only methods to read
  *  the ADC in a single ended manner and that you must be using the alrt/ready
  *  pin on the device. **/
 class ADS1015 : public Devices::I2CDevice {
  public:
+  /** \brief Possible address values for the ADS1015. **/
+  enum ADDR { GND = 0x48, VDD = 0x49, SSDA = 0x4A, SSCL = 0x4B };
+  /** \brief Possible gain values for the ADS1015. **/
+  enum GAIN {
+    TWO_THIRDS = 0x0000,
+    ONE = 0x0200,
+    TWO = 0x0400,  // Default
+    FOUR = 0x0500,
+    EIGHT = 0x0800,
+    SIXTEEN = 0x0A00
+  };
+  /** \brief Possible sample rates for the ADS1015. **/
+  enum SR {
+    SPS_128 = 0x0000,
+    SPS_250 = 0x0020,
+    SPS_490 = 0x0040,
+    SPS_920 = 0x0060,
+    SPS_1600 = 0x0080,  // Default
+    SPS_2400 = 0x00A0,
+    SPS_3300 = 0x00C0
+  };
   /** \brief Reads and returns a csv line containing the current voltage
    * readings on all four input lines. The line format is as follows:
    *           a0,a1,a2,a3
@@ -99,6 +101,10 @@ class ADS1015 : public Devices::I2CDevice {
   /** ADC gain value **/
   ADS1015_GAIN gain;
 };
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 }  // namespace ADS1015_V1
+#endif
 
 #endif
+
+/** @} **/

@@ -1,23 +1,22 @@
-#include <Gomspace.hpp>
-#include <I2CDevice.hpp>
+#include "../Devices/I2CDevice.hpp"
+#include "Gomspace.hpp"
 
-using namespace PAN::Devices;
+using namespace Devices;
 
-Gomspace::Gomspace(i2c_t3 &i2c_wire, uint8_t i2c_addr) : I2CDevice(wire, i2c_addr, 0) {}
+Gomspace::Gomspace(i2c_t3 &i2c_wire, uint8_t i2c_addr) : I2CDevice(i2c_wire, i2c_addr, 0) {}
 
 // Blank because we can't ever really set up the Gomspace!
-Gomspace::dev_setup() {}
+bool Gomspace::setup() { return is_functional(); }
 
-Gomspace::dev_is_functional() { return _ping(0x00); }
+bool Gomspace::is_functional() { return _ping(0x00); }
 
-Gomspace::dev_reset() { _reboot(); }
+void Gomspace::reset() { _reboot(); }
 
 // Blank because we can't ever really disable the Gomspace!
-Gomspace::dev_disable() {}
+void Gomspace::disable() {}
 
-Gomspace::dev_sc_test() {
+void Gomspace::single_comp_test() {
     // TODO
-    return String("");
 }
 
 void Gomspace::_get_hk_2() {
@@ -26,7 +25,7 @@ void Gomspace::_get_hk_2() {
     uint8_t command[2] = {PORT_BYTE, CMD_TYPE_BYTE};
     i2c_write(command, 2);
 
-    uint8_t* buffer = std::reinterpret_cast<uint8_t*>(&hk);
+    uint8_t* buffer = reinterpret_cast<uint8_t*>(const_cast<eps_hk_t*>(&hk));
     i2c_read(buffer, sizeof(eps_hk_t));
 }
 
@@ -36,7 +35,7 @@ void Gomspace::_get_hk_2_vi() {
     uint8_t command[2] = {PORT_BYTE, CMD_TYPE_BYTE};
     i2c_write(command, 2);
 
-    uint8_t* buffer = std::reinterpret_cast<uint8_t*>(&hk_vi);
+    uint8_t* buffer = reinterpret_cast<uint8_t*>(const_cast<eps_hk_vi_t*>(&hk_vi));
     i2c_read(buffer, sizeof(eps_hk_vi_t));
 }
 
@@ -46,7 +45,7 @@ void Gomspace::_get_hk_2_out() {
     uint8_t command[2] = {PORT_BYTE, CMD_TYPE_BYTE};
     i2c_write(command, 2);
 
-    uint8_t* buffer = std::reinterpret_cast<uint8_t*>(&hk_out);
+    uint8_t* buffer = reinterpret_cast<uint8_t*>(const_cast<eps_hk_out_t*>(&hk_out));
     i2c_read(buffer, sizeof(eps_hk_out_t));
 }
 
@@ -56,7 +55,7 @@ void Gomspace::_get_hk_2_wdt() {
     uint8_t command[2] = {PORT_BYTE, CMD_TYPE_BYTE};
     i2c_write(command, 2);
 
-    uint8_t* buffer = std::reinterpret_cast<uint8_t*>(&hk_wdt);
+    uint8_t* buffer = reinterpret_cast<uint8_t*>(const_cast<eps_hk_wdt_t*>(&hk_wdt));
     i2c_read(buffer, sizeof(eps_hk_wdt_t));
 }
 
@@ -66,7 +65,7 @@ void Gomspace::_get_hk_2_basic() {
     uint8_t command[2] = {PORT_BYTE, CMD_TYPE_BYTE};
     i2c_write(command, 2);
 
-    uint8_t* buffer = std::reinterpret_cast<uint8_t*>(&hk_basic);
+    uint8_t* buffer = reinterpret_cast<uint8_t*>(const_cast<eps_hk_basic_t*>(&hk_basic));
     i2c_read(buffer, sizeof(eps_hk_basic_t));
 }
 
@@ -78,13 +77,16 @@ void Gomspace::_set_output(uint8_t output_byte) {
 
 void Gomspace::_set_single_output(uint8_t channel, uint8_t value, int16_t time_delay) {
     uint8_t PORT_BYTE = 0x10;
-    uint8_t command[4] = {PORT_BYTE, channel, value, time_delay};
-    i2c_write(command, 4);
+    uint8_t command[5] = {PORT_BYTE, channel, value, (uint8_t)(time_delay >> 8), (uint8_t) time_delay};
+    i2c_write(command, 5);
 }
 
 void Gomspace::_set_pv_volt(uint16_t voltage1, uint16_t voltage2, uint16_t voltage3) {
     uint8_t PORT_BYTE = 0x11;
-    uint8_t command[7] = {PORT_BYTE, voltage1 >> 8, voltage1, voltage2 >> 8, voltage2, voltage3 >> 8, voltage3};
+    uint8_t command[7] = {PORT_BYTE, 
+        (uint8_t)(voltage1 >> 8), (uint8_t) voltage1, 
+        (uint8_t)(voltage2 >> 8), (uint8_t) voltage2, 
+        (uint8_t)(voltage3 >> 8), (uint8_t) voltage3};
     i2c_write(command, 7);
 }
 
@@ -104,7 +106,7 @@ uint8_t* Gomspace::_set_heater(uint8_t cmd, uint8_t header, uint8_t mode) {
     return buffer;
 }
 
-void Gomspace::_get_heater() {
+uint8_t* Gomspace::_get_heater() {
     uint8_t PORT_BYTE = 0x13;
     uint8_t command[1] = {PORT_BYTE};
     i2c_write(command, 1);
@@ -139,13 +141,13 @@ void Gomspace::_config_get() {
     uint8_t command[1] = {PORT_BYTE};
     i2c_write(command, 1);
 
-    uint8_t* buffer = std::reinterpret_cast<uint8_t*>(&config);
+    uint8_t* buffer = reinterpret_cast<uint8_t*>(const_cast<eps_config_t*>(&config));
     i2c_read(buffer, sizeof(eps_config_t));
 }
 
 void Gomspace::_config_set(const eps_config_t &c) {
     uint8_t PORT_BYTE = 0x19;
-    uint8_t* config_struct = std::reinterpret_cast<uint8_t*>(&c);
+    uint8_t* config_struct = reinterpret_cast<uint8_t*>(const_cast<eps_config_t*>(&c));
     uint8_t command[1] = {PORT_BYTE};
     i2c_write(command, 1);
     i2c_write(config_struct, sizeof(eps_config_t));
@@ -168,13 +170,13 @@ void Gomspace::_config2_get() {
     uint8_t command[1] = {PORT_BYTE};
     i2c_write(command, 1);
 
-    uint8_t* buffer = std::reinterpret_cast<uint8_t*>(&config2);
+    uint8_t* buffer = reinterpret_cast<uint8_t*>(const_cast<eps_config2_t*>(&config2));
     i2c_read(buffer, sizeof(eps_config2_t));
 }
 
 void Gomspace::_config2_set(const eps_config2_t &c) {
     uint8_t PORT_BYTE = 0x23;
-    uint8_t* config2_struct = std::reinterpret_cast<uint8_t*>(&c);
+    uint8_t* config2_struct = reinterpret_cast<uint8_t*>(const_cast<eps_config2_t*>(&c));
     uint8_t command[1] = {PORT_BYTE};
     i2c_write(command, 1);
     i2c_write(config2_struct, sizeof(eps_config2_t));
@@ -182,7 +184,7 @@ void Gomspace::_config2_set(const eps_config2_t &c) {
 
 void Gomspace::_config3(const eps_config3_t &c) {
     uint8_t PORT_BYTE = 0x25;
-    uint8_t* config3_struct = std::reinterpret_cast<uint8_t*>(&c);
+    uint8_t* config3_struct = reinterpret_cast<uint8_t*>(const_cast<eps_config3_t*>(&c));
     uint8_t command[1] = {PORT_BYTE};
     i2c_write(command, 1);
     i2c_write(config3_struct, sizeof(eps_config3_t));
@@ -203,5 +205,5 @@ void Gomspace::_reboot() {
     uint8_t MAGIC[4] = {0x80,0x07,0x80,0x07};
     uint8_t command[1] = {PORT_BYTE};
     i2c_write(command, 1);
-    i2c_write(command, 4);
+    i2c_write(MAGIC, 4);
 }

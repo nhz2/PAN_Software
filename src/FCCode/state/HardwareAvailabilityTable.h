@@ -5,7 +5,6 @@ namespace Devices {
 // Hardware Availability Table
 class HardwareAvailabilityTable {
   private:
-    const uint8_t PAN_ADCS = 0;
     const uint8_t Piksi = 0;
     const uint8_t PAN_ADCS = 0;
     std::array<std::string, NUMBER_OF_DEVICES> devices = {"PAN ADCS", "Piksi", "GomSpace", "Quake"};

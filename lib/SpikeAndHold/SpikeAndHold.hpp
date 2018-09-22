@@ -1,5 +1,5 @@
-#include <stdint>
-#include <Device.hpp>
+#include <Arduino.h>
+#include "../Devices/Device.hpp"
 
 namespace Devices {
     class SpikeAndHold : public Device {
@@ -12,13 +12,13 @@ namespace Devices {
                                              // [5]: Nozzle valve.
 
         struct FiringSchedule {
-            uint32_t **openings, // Map of valves that are opened, indexed (sorted) by time
-            uint32_t **closings, // Map of valves that are opened, indexed (sorted) by time
+            uint32_t **openings; // Map of valves that are opened, indexed (sorted) by time
+            uint32_t **closings; // Map of valves that are closed, indexed (sorted) by time
         };
         /** \brief Default constructor. Loads a set of hardcoded pins into the valve table.**/
         SpikeAndHold();
         /** \brief Argumented constructor. Loads the set of specified pins into the valve table.**/
-        SpikeAndHold(const uint8_t[NUM_VALVES] pins);
+        SpikeAndHold(const uint8_t pins[NUM_VALVES]);
 
         /** \brief Blocking call to fire the thrusters for the specified durations.
          *  \param durations An integer array containing how long, in milliseconds, to fire the valves.

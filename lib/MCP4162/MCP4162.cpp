@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <SPI.h>
-#include <MCP4162.hpp>
+#include "MCP4162.hpp"
 
 using namespace Devices;
 
@@ -14,11 +14,11 @@ MCP4162::MCP4162(SPIClass &spi_bus, uint8_t slave_select) : spi(spi_bus) {
     spi.setBitOrder(MSBFIRST); // MSBFIRST required by MCP4162.
 }
 
-bool MCP4162::dev_setup() {
-    return dev_is_functional();
+bool MCP4162::setup() {
+    return is_functional();
 }
 
-bool MCP4162::dev_is_functional() {
+bool MCP4162::is_functional() {
     // There's no way for us to verify, in hardware, whether the 
     // digital pot is working or not. So we just return true.
     return true;
@@ -26,11 +26,12 @@ bool MCP4162::dev_is_functional() {
 
 // These functions are not implemented, because the device is extremely simple
 // and actually cannot be reset/disabled.
-void MCP4162::dev_reset() {}
-void MCP4162::dev_disable() {}
+void MCP4162::reset() {}
+void MCP4162::disable() {}
 
-String MCP4162::dev_sc_test() {
-    return String(_wiper_setting);
+void MCP4162::single_comp_test() {
+    // TODO
+    // Return the wiper setting somehow
 }
 
 void MCP4162::set_wiper(uint8_t value) {

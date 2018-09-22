@@ -1,19 +1,19 @@
-#include <stdlib>
-#include <stdint>
-#include <Device.hpp>
-#include <SpikeAndHold.hpp>
+#include "Arduino.h"
+#include <climits>
+#include "../Devices/Device.hpp"
+#include "SpikeAndHold.hpp"
 
 using namespace Devices;
 
 SpikeAndHold::SpikeAndHold() {
     uint8_t PIN_VALUES[6] = {3, 4, 5, 6, 9, 10};
-    for (uint8_t i = 0; i < NUM_VALVES; i++) {
+    for (uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) {
         valve_pins[i] = PIN_VALUES[i];
     }
 }
 
-SpikeAndHold::SpikeAndHold(const uint8_t[SpikeAndHold::NUM_VALVES] pins) {
-    for (uint8_t i = 0; i < NUM_VALVES; i++) {
+SpikeAndHold::SpikeAndHold(const uint8_t pins[SpikeAndHold::NUM_VALVES]) {
+    for (uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) {
         valve_pins[i] = pins[i];
     }
 }
@@ -21,6 +21,13 @@ SpikeAndHold::SpikeAndHold(const uint8_t[SpikeAndHold::NUM_VALVES] pins) {
 bool SpikeAndHold::fire_thrusters(const SpikeAndHold::FiringSchedule &schedule) {
     if (!_schedule_is_correct(schedule)) return false;
     bool done = false;
+
+    uint32_t **o = schedule.openings;
+    uint32_t **c = schedule.closings;
+    uint8_t o_size = sizeof(o) / sizeof(uint32_t);
+    uint8_t c_size = sizeof(c) / sizeof(uint32_t);
+    uint32_t **o_ptr = o; // Pointer to next valve to open
+    uint32_t **c_ptr = c; // Pointer to next valve to close
     uint32_t start_time = micros();
 
     while(!done) {
@@ -33,12 +40,12 @@ bool SpikeAndHold::fire_thrusters(const SpikeAndHold::FiringSchedule &schedule) 
         }
         else if (!done_openings) {
             // Open all valves that should be opened at this time.
-            if (schedule.openings.size() != 0) {
-                auto next_opening = schedule.openings.begin();
-                uint32_t next_opening_time = next_opening->first;
-                uint8_t next_opening_valve = valve_pins[next_openings->second];
+            if (o_ptr != &o[o_size - 1]) {
+                uint32_t next_opening_time = (*o_ptr)[0];
+                uint8_t next_opening_valve = valve_pins[(*o_ptr)[1]];
                 if (next_opening_time * 1000 - it_time >= 0) {
                     digitalWrite(next_opening_valve, HIGH);
+                    o_ptr++;
                 }
             }
             else {
@@ -47,12 +54,12 @@ bool SpikeAndHold::fire_thrusters(const SpikeAndHold::FiringSchedule &schedule) 
         }
         else if (!done_closings) {
             // Close all valves that should be closed at this time.
-            if (schedule.closings.size() != 0) {
-                auto next_closing = schedule.closings.begin();
-                uint32_t next_closing_time = next_closing->first;
-                uint8_t next_closing_valve = valve_pins[next_closing->second];
+            if (c_ptr != &c[c_size - 1]) {
+                uint32_t next_closing_time = (*o_ptr)[0];
+                uint8_t next_closing_valve = valve_pins[(*o_ptr)[1]];
                 if (next_closing_time * 1000 - it_time >= 0) {
                     digitalWrite(next_closing_valve, LOW);
+                    o_ptr++;
                 }
             }
             else {
@@ -74,21 +81,21 @@ bool SpikeAndHold::_schedule_is_correct(const SpikeAndHold::FiringSchedule &sche
     // Ensure openings are ordered and are valid valves
     for(uint8_t i = 1; i < o_size; i++) {
         if (o[i][0] <= o[i - 1][0]) return false;
-        if (o[i][1] >= NUM_VALVES) return false;
+        if (o[i][1] >= SpikeAndHold::NUM_VALVES) return false;
     }
     // Ensure closings are ordered and are valid valves
     for(uint8_t i = 1; i < c_size; i++) {
         if (c[i][0] <= c[i - 1][0]) return false;
-        if (c[i][1] >= NUM_VALVES) return false;
+        if (c[i][1] >= SpikeAndHold::NUM_VALVES) return false;
     }
 
     //// Ensure # of openings per valve = # of closings per valve
-    uint8_t num_openings[NUM_VALVES]; // Number of times valve i is opened
-    uint8_t num_closings[NUM_VALVES]; // Number of times valve i is opened
-    for(uint8_t i = 0; i < NUM_VALVES; i++) { num_openings[i] = 0; num_closings[i] = 0; }
+    uint8_t num_openings[SpikeAndHold::NUM_VALVES]; // Number of times valve i is opened
+    uint8_t num_closings[SpikeAndHold::NUM_VALVES]; // Number of times valve i is opened
+    for(uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) { num_openings[i] = 0; num_closings[i] = 0; }
     for(uint8_t i = 0; i < o_size; i++) { num_openings[o[i][1]]++; }
     for(uint8_t i = 0; i < c_size; i++) { num_openings[c[i][1]]++; }
-    for(uint8_t i = 0; i < NUM_VALVES; i++) { if (num_openings[i] != num_closings[i]) return false; }
+    for(uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) { if (num_openings[i] != num_closings[i]) return false; }
 
     //// Ensure last openings and closings are not beyond the micros() range.
     uint32_t last_opening = o[o_size - 1][1];

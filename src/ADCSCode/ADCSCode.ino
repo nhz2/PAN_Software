@@ -10,6 +10,7 @@
 // Cornell University
 //
 
+#include <Arduino.h>
 #include <i2c_t3_pan.h>
 #include <PololuIMU.hpp>
 #include <Potentiometer.hpp>

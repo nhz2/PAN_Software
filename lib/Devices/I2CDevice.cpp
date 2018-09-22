@@ -12,16 +12,15 @@
 
 #include "I2CDevice.hpp"
 
-namespace Devices {
+using namespace Devices;
 
-namespace I2CDEVICE_V1 {
 bool I2CDevice::setup() {
   for (unsigned int i = 0; i < I2CDEVICE_DISABLE_AT; i++)
     if (this->i2c_ping()) return true;
   return false;
 }
 
-bool I2CDevice::is_functional() const {
+bool I2CDevice::is_functional() {
   return (this->error_count < I2CDEVICE_DISABLE_AT);
 }
 
@@ -43,5 +42,4 @@ I2CDevice::I2CDevice(i2c_t3 &wire, uint8_t addr, unsigned long timeout)
       recent_errors(false) {
   // empty
 }
-}  // namespace I2CDEVICE_V1
-}  // namespace Devices
+

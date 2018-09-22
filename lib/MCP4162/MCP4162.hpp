@@ -1,4 +1,4 @@
-#include <Device.hpp>
+#include "../Devices/Device.hpp"
 
 namespace Devices {
 class MCP4162 : public Device {
@@ -18,11 +18,11 @@ class MCP4162 : public Device {
     MCP4162(SPIClass &s, uint8_t slave_select);
 
     // Device functions
-    bool dev_setup();
-    bool dev_is_functional();
-    void dev_reset();
-    void dev_disable();
-    String dev_sc_test();
+    bool setup();
+    bool is_functional();
+    void reset();
+    void disable();
+    void single_comp_test();
 
     /** \brief Set temperature. This will tell the set_resistance() and get_resistance()  how to appropriately set the wiper. */
     void set_temperature(float t);

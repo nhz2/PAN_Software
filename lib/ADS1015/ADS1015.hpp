@@ -16,7 +16,7 @@
 #ifndef PAN_ADS1015_HPP_
 #define PAN_ADS1015_HPP_
 
-#include <I2CDevice.hpp>
+#include "../Devices/I2CDevice.hpp"
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 inline namespace ADS1015_V1 {
@@ -27,9 +27,9 @@ inline namespace ADS1015_V1 {
 class ADS1015 : public Devices::I2CDevice {
  public:
   /** \brief Possible address values for the ADS1015. **/
-  enum ADDR { GND = 0x48, VDD = 0x49, SSDA = 0x4A, SSCL = 0x4B };
+  enum ADS1015_ADDR { GND = 0x48, VDD = 0x49, SSDA = 0x4A, SSCL = 0x4B };
   /** \brief Possible gain values for the ADS1015. **/
-  enum GAIN {
+  enum ADS1015_GAIN {
     TWO_THIRDS = 0x0000,
     ONE = 0x0200,
     TWO = 0x0400,  // Default
@@ -38,7 +38,7 @@ class ADS1015 : public Devices::I2CDevice {
     SIXTEEN = 0x0A00
   };
   /** \brief Possible sample rates for the ADS1015. **/
-  enum SR {
+  enum ADS1015_SR {
     SPS_128 = 0x0000,
     SPS_250 = 0x0020,
     SPS_490 = 0x0040,

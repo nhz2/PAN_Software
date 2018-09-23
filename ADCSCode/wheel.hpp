@@ -43,7 +43,7 @@ namespace wheel {
     unsigned int const read_ramp_pin;
 
     /*! potentiometer to control speed ramp and it's communication error count */
-    AD5254 set_ramp;
+    AD5254 &set_ramp;
     unsigned int consec_err;
 
   };

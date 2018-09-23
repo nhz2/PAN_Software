@@ -19,6 +19,10 @@ void Gomspace::single_comp_test() {
     // TODO
 }
 
+bool Gomspace::i2c_ping() {
+    return _ping(0x01);
+}
+
 void Gomspace::_get_hk_2() {
     uint8_t PORT_BYTE = 0x08;
     uint8_t CMD_TYPE_BYTE = 0x00;

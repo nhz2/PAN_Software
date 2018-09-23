@@ -15,6 +15,7 @@ class Gomspace : public I2CDevice {
     void reset() override;
     void disable() override;
     void single_comp_test() override;
+    bool i2c_ping() override;
 
   private:
     struct __attribute__((packed)) eps_hk_t

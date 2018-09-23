@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include "../Devices/Device.hpp"
 
 namespace Devices {

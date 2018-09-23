@@ -34,6 +34,10 @@ void I2CDevice::disable() {
   this->recent_errors = true;
 }
 
+void I2CDevice::single_comp_test() {
+  // TODO
+}
+
 I2CDevice::I2CDevice(i2c_t3 &wire, uint8_t addr, unsigned long timeout)
     : wire(wire),
       addr(addr),

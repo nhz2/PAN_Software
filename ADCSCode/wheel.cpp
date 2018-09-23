@@ -11,7 +11,7 @@
 // see http://mb-raw.blogspot.com/2018/02/teensy-and-pwm.html for pwm frequency
 
 #include "wheel.hpp"
-AD5254 pot= AD5254(Wire1,AD5254_ADDR_1);
+AD5254 pot(Wire1,AD5254_ADDR_1);
 wheel::WheelUnit wheel::wheels[3] = {
   {39,26,23,A14,A1,pot,0},
   {39,26,23,A14,A1,pot,0},

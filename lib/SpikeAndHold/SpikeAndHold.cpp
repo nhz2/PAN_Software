@@ -92,10 +92,16 @@ bool SpikeAndHold::_schedule_is_correct(const SpikeAndHold::FiringSchedule &sche
     //// Ensure # of openings per valve = # of closings per valve
     uint8_t num_openings[SpikeAndHold::NUM_VALVES]; // Number of times valve i is opened
     uint8_t num_closings[SpikeAndHold::NUM_VALVES]; // Number of times valve i is opened
+    // Get numbers of openings and closings per valve
     for(uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) { num_openings[i] = 0; num_closings[i] = 0; }
     for(uint8_t i = 0; i < o_size; i++) { num_openings[o[i][1]]++; }
-    for(uint8_t i = 0; i < c_size; i++) { num_openings[c[i][1]]++; }
+    for(uint8_t i = 0; i < c_size; i++) { num_closings[c[i][1]]++; }
     for(uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) { if (num_openings[i] != num_closings[i]) return false; }
+
+    // Ensure valve that is opened isn't opened again before being closed
+    // TODO
+    // Ensure valve that is closed isn't closed again before being opened
+    // TODO
 
     //// Ensure last openings and closings are not beyond the micros() range.
     uint32_t last_opening = o[o_size - 1][1];

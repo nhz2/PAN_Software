@@ -11,6 +11,9 @@
 // Cornell Univeristy
 //
 
+/** \addtogroup Libraries
+ *  @{ **/
+
 #ifndef PAN_DEVICES_DEVICEMANAGER_HPP_
 #define PAN_DEVICES_DEVICEMANAGER_HPP_
 
@@ -92,3 +95,5 @@ class DeviceManager {
 #include "DeviceManager.inl"
 
 #endif
+
+/** @} **/

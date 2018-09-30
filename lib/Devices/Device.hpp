@@ -37,16 +37,33 @@ inline namespace DEVICE_V1 {
  *  communications downlinks and updates on the satellites health. **/
 class Device {
  public:
-  /** \brief Sets up communication with the device and verifies
-   *         the device is responding to communication attempts.
+  /** \brief Initiliazes the device and attempts communication if applicable.
+   *  \returns true if initialization succeeded and false otherwise.
    *
-   *
-   *  \returns True if device is working properly, false otherwise. **/
+   *  The setup function is used to initialize a device when the satellite is
+   *  booting up. The function should perform as many of the following functions
+   *  that are applicable to a particular device:
+   *   -# Set the device's input values to defaults to avoid erroneous behavior.
+   *      A good example of this would be disable CW and CCW rotation of the
+   *      reaction wheels.
+   *   -# "Ping" a device that we are communicating with over I2C/UART to ensure
+   *      the device is responding. Reading a dummy register off of and i2c
+   *      device or sending the "AT" command to the quake are good examples.
+   *  If the device doesn't fit any of the above criteria, it is permissable for
+   *  the function to just return true and act as a NOP. **/
   virtual bool setup();
   /** \brief Verifies the device is responding to communications.
    *  \returns True if device is responding to communications, false otherwise.
-   * **/
-  virtual bool is_functional();
+   *
+   *  This functions simply returns whether or not the current device should be
+   *  treated as functional. A device may be marked not functional for two
+   *  reasons:
+   *   -# The device was disabled by a call to the disable function.
+   *   -# The device marked itself as not functional do to multiple,
+   *      consecutive communication failures.
+   *  Communication with the device should not be attempted if it is marked
+   *  as not functional. **/
+  virtual bool is_functional() const;
   /** \brief Attempts to reset a non-functional device. All error state
    *         variables should be reset. In most cases, this should only be
    *         be called as the result of a ground originated command. **/

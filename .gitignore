@@ -3,8 +3,11 @@
 .vscode
 .vscode/*
 # Working compiler versions
-res/*
 res
+res/*
 .pioenvs
 .piolibdeps
+docs
+docs/*
+.vscode
 .vscode/*

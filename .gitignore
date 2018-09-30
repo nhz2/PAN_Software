@@ -1,13 +1,6 @@
-# OS Generated .DS_store files
-.DS_Store
-.vscode
-.vscode/*
-# Working compiler versions
-res
-res/*
+res/
+docs/
+.vscode/
 .pioenvs
+.DS_Store
 .piolibdeps
-docs
-docs/*
-.vscode
-.vscode/*

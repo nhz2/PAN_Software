@@ -16,62 +16,71 @@
 #ifndef PAN_DEVICES_I2CDEVICE_HPP_
 #define PAN_DEVICES_I2CDEVICE_HPP_
 
-/*   The I2CDevice class is intended as an abstract class form which all i2c
- * devices will be derived.
- *   It provides per device i2c fucntionality as opposed to per bus making code
- * and device managment much simpler. Each device specifically has it's own
- * timeout value in milliseconds, i2c bus address, i2c bus reference, and error
- * history state variables.
- *   The class also wraps common i2c_t3 wire function calls to manage the device
- * device specific variables (error tracking, device specific timeouts, etc.).
- * See https://github.com/nox771/i2c_t3 for more information about the teensy
- * i2c library.
- *   The error history state variables operate in the following manner. Each
- * device has two variables tracking errors. One tracks recent history and is a
- * boolean that holds true if an error has occurred since the last call to
- * i2c_pop_errors() and holds false otherwise. The second variable counts
- * consecutive communication failures with the device and is updated with a call
- * to i2c_pop_errors(). i2c_pop_errors should therefore only be called once
- * during a communication with an i2c device (this includes configuration,
- * requesting, and recieving that is needed to obtain data). Otherwise,
- * i2c_peek_errors() can be used to check the recent history of i2c errors.
- *   For consistency, all member functions of this class are prefixed with i2c_.
- */
-
 #include "Device.hpp"
 
-/* Note that I2C_AUTO_RETRY should be enabled - I2CDevice makes no calls to
- * resetBus internally.
- */
+/** Note that I2C_AUTO_RETRY should be enabled - I2CDevice makes no calls to
+ *  resetBus internally. **/
 #include "i2c_t3_pan/i2c_t3_pan.h"
 
 /** \namespace Devices **/
 namespace Devices {
 
-/* The number of times an i2c communication can fail before the device is
- * considered not functional. */
+/** The number of times an i2c communication can fail before the device is
+ *  considered not functional. **/
 #define I2CDEVICE_DISABLE_AT 3
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 inline namespace I2CDEVICE_V1 {
 #endif
 /** \class I2CDevice
- *  \brief Abstract class from which all i2c devices will be derived. **/
+ *  \brief Abstract class from which all i2c device drivers will be derived.
+ *
+ *  \par
+ *  The I2CDevice class is intended as an abstract class form which all i2c
+ *  devices will be derived.
+ *  \par
+ *  It provides per device i2c fucntionality as opposed to per bus making code
+ *  and device managment much simpler. Each device specifically has it's own
+ *  timeout value in milliseconds, i2c bus address, i2c bus reference, and error
+ *  history state variables.
+ *  \par
+ *  The class also wraps common i2c_t3 wire function calls to manage the device
+ *  device specific variables (error tracking, device specific timeouts, etc.).
+ *  See https://github.com/nox771/i2c_t3 for more information about the teensy
+ *  i2c library.
+ *  \par
+ *  The error history state variables operate in the following manner. Each
+ *  device has two variables tracking errors. One tracks recent history and is a
+ *  boolean that holds true if an error has occurred since the last call to
+ *  i2c_pop_errors() and holds false otherwise. The second variable counts
+ *  consecutive communication failures with the device and is updated with a
+ *  call to i2c_pop_errors(). i2c_pop_errors should therefore only be called
+ *  once during a communication with an i2c device (this includes configuration,
+ *  requesting, and recieving that is needed to obtain data). Otherwise,
+ *  i2c_peek_errors() can be used to check the recent history of i2c errors.
+ *  \par
+ *  For consistency, all member functions of this class are prefixed with i2c_.
+ *  **/
 class I2CDevice : public Device {
  public:
-  /** \brief Attempts to call i2c_ping up to I2CDEVICE_DISABLE_AT times.
-   *  \returns true if a succesful ping happened and false otherwise. **/
-  bool setup() override;
+  /** \brief Attempts to initialize communication with the i2c device.
+   *  \returns True if the setup was succesful and false otherwise.
+   *
+   *  The function makes up to I2CDEVICE_DISABLE_AT calls to the i2c_ping
+   *  function. If any of those calls returns true, the setup function is
+   *  considered to succesful. If the setup function returns false, this implies
+   *  the device is not functional and is marked as such. **/
+  virtual bool setup() override;
   /** \brief The device is considered to be functional if less than
    *         I2CDEVICE_DISABLE_AT errors have occurred in a row.
    *  \returns True if device is working properly, false otherwise.. **/
-  bool is_functional() override;
+  virtual bool is_functional() const override;
   /** \brief Wipes error history variables clean. Must be called from a function
    *         that overrides this. **/
-  void reset() override;
+  virtual void reset() override;
   /** \brief Forces error history variables to broken state. Must be called from
    *         a function that overrides this. **/
-  void disable() override;
+  virtual void disable() override;
   /** \brief Sets this device's I2C timeout in milliseconds. **/
   inline void i2c_set_timeout(unsigned long i2c_timeout);
   /** \brief  Gets the current value of i2c_timeout in milliseconds.

@@ -34,12 +34,12 @@ inline namespace DEVICEMANAGER_V1 {
  *  convenient for high level functionality like comms frames, device enabling &
  *  disabling, etc.
  *  The intended use case is as follows:
- *  -# Create a constant array of pointers to all of the devices conencted to
+ *   -# Create a constant array of pointers to all of the devices conencted to
  *     the microcontroller.
- *  -# Enum the device identifiers (position in the vector) for easy, efficient
+ *   -# Enum the device identifiers (position in the vector) for easy, efficient
  *     access - this also makes static casting via the get_device function
  *     easier to perform.
- *  -# Pass a reference of the device pointer vector to the DeviceManager
+ *   -# Pass a reference of the device pointer vector to the DeviceManager
  *     constructor. **/
 class DeviceManager {
  public:

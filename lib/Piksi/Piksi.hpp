@@ -88,8 +88,8 @@ class Piksi : public Device {
     void _uart_state_callback(u16 sender_id, u8 len, u8 msg[], void *context);
     void _user_data_callback(u16 sender_id, u8 len, u8 msg[], void *context);
 
-    // Registers all callbacks with libsbp.
-    void _register_all_callbacks();
+    // Required writing function by libsbp. See libsbp.c
+    u32 _uart_write(u8 *buff, u32 n, void *context);
 
     // Value containers.
     msg_gps_time_t _gps_time;
@@ -101,7 +101,7 @@ class Piksi : public Device {
     msg_settings_read_resp_t _settings_read_resp;
     msg_heartbeat_t _heartbeat;
     msg_uart_state_t _uart_state;
-    msg_user_data_t _user_data;
+    msg_user_data_t _user_data;  
 };
 }
 

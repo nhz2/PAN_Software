@@ -30,8 +30,7 @@ void MCP4162::reset() {}
 void MCP4162::disable() {}
 
 void MCP4162::single_comp_test() {
-    // TODO
-    // Return the wiper setting somehow
+    // TODO Display wiper setting
 }
 
 void MCP4162::set_wiper(uint8_t value) {
@@ -43,8 +42,7 @@ void MCP4162::set_wiper(uint8_t value) {
 }
 
 void MCP4162::set_temperature(float t) {
-    // TODO
-    // Use a lookup table to recalibrate max and min resistances
+    // TODO Use a lookup table to recalibrate max and min resistances
     temperature = t;
     _max_resistance = 0;
     _min_resistance = 0;

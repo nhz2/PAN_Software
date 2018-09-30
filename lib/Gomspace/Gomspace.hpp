@@ -8,8 +8,9 @@
 namespace Devices {
 class Gomspace : public I2CDevice {
   public:
-    static const uint8_t ADDRESS = 0x02; // I2C address of device
+    static const uint8_t ADDRESS = 0x02; /**< I2C address of Gomspace device **/
 
+    /** "Housekeeping" data struct; contains Gomspace state information. */
     struct __attribute__((packed)) eps_hk_t {
         uint16_t vboost[3];            //! Voltage of boost converters [mV] [PV1, PV2, PV3] //! Voltage of battery [mV]
         uint16_t vbatt;                //! Voltage of battery [mV]
@@ -36,6 +37,7 @@ class Gomspace : public I2CDevice {
         uint16_t reserved2;
     };
 
+    /** Config data struct; contains output/heater configurations and PPT configuration. */
     struct __attribute__((packed)) eps_config_t {
         uint8_t ppt_mode;                     //! Mode for PPT [1 = AUTO, 2 = FIXED]
         uint8_t battheater_mode;              //! Mode for battheater [0 = Manual, 1 = Auto]
@@ -48,6 +50,7 @@ class Gomspace : public I2CDevice {
         uint16_t vboost[3];                   //! Fixed PPT point for boost converters [mV]
     };
 
+    /** Config2 data struct; contains battery voltage level definitionss. */
     struct __attribute__((packed)) eps_config2_t {
         uint16_t batt_maxvoltage;
         uint16_t batt_safevoltage;
@@ -57,13 +60,14 @@ class Gomspace : public I2CDevice {
         uint8_t reserved2[4];
     };
 
+    /** Config3 data struct: contains output current limits. */
     struct __attribute__((packed)) eps_config3_t {
         uint8_t version;
         uint8_t cmd;
         uint8_t length;
         uint8_t flags;
         uint16_t cur_lim[8];
-        uint8_t cur_ema_gain;
+        uint8_t cur_ema_gain; // TODO what is this?
         uint8_t cspwdt_channel[2];
         uint8_t cspwdt_address[2];
     };
@@ -86,43 +90,51 @@ class Gomspace : public I2CDevice {
     /** \brief Set a single output on or off, with an optional time delay.
      *  \param Channel to set on or off. (See NanoPower documentation to see how channel numbers correspond to outputs.)
      *  \param Whether to set the channel on or off.
-     *  \param Time delay for change. */
+     *  \param Time delay for change, in seconds. */
     void set_single_output(uint8_t channel, uint8_t value, int16_t time_delay = 0);
-    /** \brief Set whether or not to accept voltage inputs from photovoltaic inputs.
-     * \param Whether or not to accept voltage input from V1.
-     * \param Whether or not to accept voltage input from V2.
-     * \param Whether or not to accept voltage input from V3. */
+    /** \brief Set voltage of photovoltaic inputs.
+     * \param Voltage of input 1, in mV.
+     * \param Voltage of input 2, in mV.
+     * \param Voltage of input 3, in mV. */
     void set_pv_volt(uint16_t voltage1, uint16_t voltage2, uint16_t voltage3);
     /** \brief Set power point mode (PPT).
      *  \param Which mode to use. See NanoPower documentation for available modes. */
     void set_pv_auto(uint8_t mode);
-    /** \brief TODO DOCUMENTATION */
-    uint8_t* set_heater(uint8_t cmd, uint8_t header, uint8_t mode);
-    /** \brief TODO DOCUMENTATION */
-    uint8_t* get_heater();
-    /** \brief TODO DOCUMENTATION */
+    /** \brief Set heater values.
+     *  \param Heater # to control. 0 = BP4, 1 = onboard, 2 = both.
+     *  \param Mode for heater (0 = OFF, 1 = ON). */
+    void set_heater(uint8_t heater, uint8_t mode);
+    /** \brief Get heater status.
+     *  \return 0 = both heaters off, 1 = BP4 heater is on, 
+     *   2 = Onboard heater is on, 3 = both are on. */
+    uint8_t get_heater();
+    /** \brief Reset boot and WDT counters. */
     void reset_counters();
     /** \brief Reset I2C watchdog timer. */
     void reset_wdt();
-    /** \brief TODO DOCUMENTATION */
-    void config_cmd(uint8_t cmd);
-    /** \brief TODO DOCUMENTATION */
-    void config_get();
-    /** \brief TODO DOCUMENTATION */
+    /** \brief Restores NanoPower to default configuration. */
+    void restore_default_config();
+    /** \brief Get EPS configuration as a struct.
+     *  \return Address of EPS configuration struct. */
+    const eps_config_t &config_get();
+    /** \brief Set EPS configuration.
+     *  \param EPS configuration to set. */
     void config_set(const eps_config_t &config);
-    /** \brief TODO DOCUMENTATION */
+    /** \brief Hard reset the Gomspace (and power-cycle all outputs). */
     void hard_reset();
-    /** \brief TODO DOCUMENTATION */
-    void config2_cmd(uint8_t cmd);
-    /** \brief TODO DOCUMENTATION */
-    void config2_get();
-    /** \brief TODO DOCUMENTATION */
+    /** \brief Restores config2 to default config2. */
+    void restore_default_config2();
+    /** \brief Get config2 as a struct. */
+    const eps_config2_t &config2_get();
+    /** \brief Set config2.
+     *  \param Struct of config2 data to set. */
     void config2_set(const eps_config2_t &config);
     /** \brief TODO DOCUMENTATION */
     void config3(const eps_config3_t &c);
 
     /** \brief Send a ping to the NanoPower unit.
-     *  \value The value to ping with. The device should send this value back. */
+     *  \value The value to ping with. The device should send this value back.
+     *  \return True if the Gomspace replied with the same code, false otherwise. */
     bool ping(uint8_t value);
     /** \brief Reboot Gomspace. */
     void reboot();
@@ -131,7 +143,6 @@ class Gomspace : public I2CDevice {
     eps_config_t gspace_config;
     eps_config2_t gspace_config2;
     eps_config3_t gspace_config3;
-
 };
 }
 

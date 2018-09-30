@@ -15,28 +15,28 @@ bool Gomspace::setup() {
     gspace_config.battheater_low = -20;
     gspace_config.battheater_low = 50;
     for(uint8_t i = 0; i < 8; i++) {
-        gspace_config.output_normal_value[i] = 1; // Form needs to be defined
+        gspace_config.output_normal_value[i] = 1; // TODO Form needs to be defined
         gspace_config.output_safe_value[i] = 0; // Form needs to be defined
         gspace_config.output_initial_on_delay[i] = 0; // Form needs to be defined
         gspace_config.output_initial_off_delay[i] = 0; // Form needs to be defined
     }
     config_set(gspace_config);
 
-    gspace_config2.batt_maxvoltage = 0; // Value needs to be defined
+    gspace_config2.batt_maxvoltage = 0; // TODO Value needs to be defined
     gspace_config2.batt_safevoltage = 0; // Value needs to be defined
     gspace_config2.batt_criticalvoltage = 0; // Value needs to be defined
     gspace_config2.batt_normalvoltage = 0; // Value needs to be defined
     config2_set(gspace_config2);
 
-    // Interaction pattern for cmd3 needs to be determined
+    // TODO Interaction pattern for cmd3 needs to be determined
     gspace_config3.version = 1;
     gspace_config3.cmd = 4;
     gspace_config3.length = 11;
     gspace_config3.flags = 0;
     for(uint8_t i = 0; i < 8; i++) {
-        gspace_config3.cur_lim[i] = 0; // Value and form needs to be defined
+        gspace_config3.cur_lim[i] = 0; // TODO Value and form needs to be defined
     }
-    gspace_config3.cspwdt_address[0] = 0; // Does this need to be set if we're using I2C watch dogs?
+    gspace_config3.cspwdt_address[0] = 0; // TODO Does this need to be set if we're using I2C watch dogs?
     gspace_config3.cspwdt_address[1] = 0; // Does this need to be set if we're using I2C watch dogs?
     gspace_config3.cspwdt_channel[0] = 0; // Does this need to be set if we're using I2C watch dogs?
     gspace_config3.cspwdt_channel[1] = 0; // Does this need to be set if we're using I2C watch dogs?
@@ -51,6 +51,7 @@ void Gomspace::reset() {
 }
 
 void Gomspace::single_comp_test() {
+    I2CDevice::single_comp_test();
     // TODO
 }
 
@@ -64,8 +65,10 @@ const Gomspace::eps_hk_t &Gomspace::get_hk_2() {
     uint8_t command[2] = {PORT_BYTE, CMD_TYPE_BYTE};
     i2c_write(command, 2);
 
-    uint8_t* buffer = (uint8_t*)&hk;
-    i2c_read(buffer, sizeof(eps_hk_t));
+    size_t struct_size = sizeof(eps_hk_t);
+    uint8_t buffer[struct_size + 2];
+    i2c_read(buffer, struct_size + 2);
+    memcpy((uint8_t*)&hk, buffer + 2, struct_size);
 
     return hk;
 }
@@ -97,24 +100,25 @@ void Gomspace::set_pv_auto(uint8_t mode) {
     i2c_write(command, 2);
 }
 
-uint8_t* Gomspace::set_heater(uint8_t cmd, uint8_t header, uint8_t mode) {
+void Gomspace::set_heater(uint8_t heater, uint8_t mode) {
     uint8_t PORT_BYTE = 0x13;
-    uint8_t command[4] = {PORT_BYTE, cmd, header, mode};
+    uint8_t COMMAND = 0x00;
+    uint8_t command[4] = {PORT_BYTE, COMMAND, heater, mode};
     i2c_write(command, 4);
-
-    static uint8_t buffer[2];
-    i2c_read(buffer, 2);
-    return buffer;
 }
 
-uint8_t* Gomspace::get_heater() {
+uint8_t Gomspace::get_heater() {
     uint8_t PORT_BYTE = 0x13;
     uint8_t command[1] = {PORT_BYTE};
     i2c_write(command, 1);
 
-    static uint8_t buffer[2];
-    i2c_read(buffer, 2);
-    return buffer;
+    uint8_t buffer[4];
+    i2c_read(buffer, 4);
+
+    // buffer[0] and [1] contain header data.
+    // buffer[2] contains 0 or 1, indicating whether BP4 heater is on.
+    // buffer[3] contains 0 or 1, indicating whether onboard heater is on.
+    return buffer[2] + 2 * buffer[3];
 }
 
 void Gomspace::reset_counters() {
@@ -131,19 +135,24 @@ void Gomspace::reset_wdt() {
     i2c_write(command, 2);
 }
 
-void Gomspace::config_cmd(uint8_t cmd) {
+void Gomspace::restore_default_config() {
     uint8_t PORT_BYTE = 0x17;
-    uint8_t command[2] = {PORT_BYTE, cmd};
+    uint8_t COMMAND = 0x01;
+    uint8_t command[2] = {PORT_BYTE, COMMAND};
     i2c_write(command, 2);
 }
 
-void Gomspace::config_get() {
+const Gomspace::eps_config_t &Gomspace::config_get() {
     uint8_t PORT_BYTE = 0x18;
     uint8_t command[1] = {PORT_BYTE};
     i2c_write(command, 1);
 
-    uint8_t* buffer = (uint8_t*)&gspace_config;
-    i2c_read(buffer, sizeof(eps_config_t));
+    size_t struct_size = sizeof(eps_config_t);
+    uint8_t buffer[struct_size + 2];
+    i2c_read(buffer, struct_size + 2);
+    memcpy((uint8_t*)&gspace_config, buffer + 2, struct_size);
+
+    return gspace_config;
 }
 
 void Gomspace::config_set(const eps_config_t &c) {
@@ -160,19 +169,24 @@ void Gomspace::hard_reset() {
     i2c_write(command, 1);
 }
 
-void Gomspace::config2_cmd(uint8_t cmd) {
+void Gomspace::restore_default_config2() {
     uint8_t PORT_BYTE = 0x21;
-    uint8_t command[2] = {PORT_BYTE, cmd};
+    uint8_t COMMAND = 0x01;
+    uint8_t command[2] = {PORT_BYTE, COMMAND};
     i2c_write(command, 2);
 }
 
-void Gomspace::config2_get() {
+const Gomspace::eps_config2_t &Gomspace::config2_get() {
     uint8_t PORT_BYTE = 0x22;
     uint8_t command[1] = {PORT_BYTE};
     i2c_write(command, 1);
 
-    uint8_t* buffer = (uint8_t*)&gspace_config2;
-    i2c_read(buffer, sizeof(eps_config2_t));
+    size_t struct_size = sizeof(eps_config2_t);
+    uint8_t buffer[struct_size + 2];
+    i2c_read(buffer, struct_size + 2);
+    memcpy((uint8_t*)&gspace_config2, buffer + 2, struct_size);
+
+    return gspace_config2;
 }
 
 void Gomspace::config2_set(const eps_config2_t &c) {
@@ -196,9 +210,9 @@ bool Gomspace::ping(uint8_t value) {
     uint8_t command[2] = {PORT_BYTE, value};
     i2c_write(command, 2);
 
-    uint8_t response;
-    i2c_read(&response, 1);
-    return value == response;
+    uint8_t buffer[3];
+    i2c_read(buffer, 3);
+    return value == buffer[2];
 }
 
 void Gomspace::reboot() {

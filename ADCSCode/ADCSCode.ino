@@ -66,7 +66,7 @@ void setup() {
 
 #ifdef VERBOSE
   // Start serial port for verbose output
-  Serial.begin(115200);
+  Serial.begin(921600);
   // Output all initialization error alert messages
   ssa::verbose_error();
   mtr::verbose_error();
@@ -162,8 +162,8 @@ void test_dac() {
 void test_x() {
   wheel::WheelUnit w= wheel::wheels[0];
   //settings
-  int speed0= 1000;//410 to 3685
-  int speed1= 2000;//410 to 3685
+  int speed0= 600;//410 to 3685
+  int speed1= 3000;//410 to 3685
   int setramp= 100;//0 to 255
   int test_time= 60000;//ms to test for
 
@@ -177,16 +177,16 @@ void test_x() {
   digitalWrite(w.en_cw_pin, HIGH);
   digitalWrite(w.en_ccw_pin, LOW);
   empty_serial();
-  w.set_ramp.set_rdac(setramp, 0, 0);
-  w.set_ramp.write_block();
+  wheel::set_ramp.set_rdac(setramp, 0, 0);
+  wheel::set_ramp.write_block();
 
   setspeed= speed0;
   analogWrite(w.set_speed_pin, setspeed);
   empty_serial();
   starttime= millis();
   while((millis()-starttime)<test_time/2) {
-    readspeed= analogRead(w.read_speed_pin);
-    readramp= analogRead(w.read_ramp_pin);
+    readspeed= 0;//analogRead(w.read_speed_pin);
+    readramp= 0;//analogRead(w.read_ramp_pin);
     Serial.print(String(millis()) + ",");
     Serial.print(String(setspeed) + ",");
     Serial.print(String(readspeed) + ",");
@@ -200,8 +200,8 @@ void test_x() {
   empty_serial();
   starttime= millis();
   while((millis()-starttime)<test_time/2) {
-    readspeed= analogRead(w.read_speed_pin);
-    readramp= analogRead(w.read_ramp_pin);
+    readspeed= 0;//analogRead(w.read_speed_pin);
+    readramp= 0;//analogRead(w.read_ramp_pin);
     Serial.print(String(millis()) + ",");
     Serial.print(String(setspeed) + ",");
     Serial.print(String(readspeed) + ",");
@@ -209,7 +209,10 @@ void test_x() {
     delayMicroseconds(100);
     Serial.flush();
   }
+  digitalWrite(w.en_cw_pin, LOW);
   empty_serial();
+
+
 }
 
 /*! Performs a test depending on which charactar code is fed to the function */

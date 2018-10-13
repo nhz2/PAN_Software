@@ -80,69 +80,77 @@ class Gomspace : public I2CDevice {
     bool i2c_ping() override;
 
     /** \brief Get full housekeeping data struct.
-     *  \return Housekeeping data struct. */
-    const eps_hk_t &get_hk_2();
+     *  \return True if housekeeping data struct was able to be found, false otherwise. */
+    bool get_hk_2();
     /** \brief Set output channels on or off.
      *  \param Output byte that masks channels. */
-    void set_output(uint8_t output_byte);
+    bool set_output(uint8_t output_byte);
     /** \brief Set a single output on or off, with an optional time delay.
      *  \param Channel to set on or off. (See NanoPower documentation to see how channel numbers correspond to outputs.)
      *  \param Whether to set the channel on or off.
      *  \param Time delay for change, in seconds. */
-    void set_single_output(uint8_t channel, uint8_t value, int16_t time_delay = 0);
+    bool set_single_output(uint8_t channel, uint8_t value, int16_t time_delay = 0);
     /** \brief Set voltage of photovoltaic inputs.
      * \param Voltage of input 1, in mV.
      * \param Voltage of input 2, in mV.
      * \param Voltage of input 3, in mV. */
-    void set_pv_volt(uint16_t voltage1, uint16_t voltage2, uint16_t voltage3);
+    bool set_pv_volt(uint16_t voltage1, uint16_t voltage2, uint16_t voltage3);
     /** \brief Set power point mode (PPT).
      *  \param Which mode to use. See NanoPower documentation for available modes. */
-    void set_pv_auto(uint8_t mode);
+    bool set_pv_auto(uint8_t mode);
     /** \brief Set heater values.
      *  \param Heater # to control. 0 = BP4, 1 = onboard, 2 = both.
      *  \param Mode for heater (0 = OFF, 1 = ON). */
-    void set_heater(uint8_t heater, uint8_t mode);
+    bool set_heater(uint8_t heater, uint8_t mode);
     /** \brief Get heater status.
      *  \return 0 = both heaters off, 1 = BP4 heater is on, 
-     *   2 = Onboard heater is on, 3 = both are on. */
+     *   2 = Onboard heater is on, 3 = both are on, 4 = error reading heater. */
     uint8_t get_heater();
     /** \brief Reset boot and WDT counters. */
-    void reset_counters();
+    bool reset_counters();
     /** \brief Reset I2C watchdog timer. */
-    void reset_wdt();
+    bool reset_wdt();
     /** \brief Restores NanoPower to default configuration. */
-    void restore_default_config();
+    bool restore_default_config();
     /** \brief Get EPS configuration as a struct.
      *  \return Address of EPS configuration struct. */
-    const eps_config_t &config_get();
+    bool config_get();
     /** \brief Set EPS configuration.
      *  \param EPS configuration to set. */
-    void config_set(const eps_config_t &config);
+    bool config_set(const eps_config_t &config);
     /** \brief Hard reset the Gomspace (and power-cycle all outputs). */
-    void hard_reset();
+    bool hard_reset();
     /** \brief Restores config2 to default config2. */
-    void restore_default_config2();
+    bool restore_default_config2();
     /** \brief Get config2 as a struct. */
-    const eps_config2_t &config2_get();
+    bool config2_get();
     /** \brief Set config2.
      *  \param Struct of config2 data to set. */
-    void config2_set(const eps_config2_t &config);
+    bool config2_set(const eps_config2_t &config);
     /** \brief TODO DOCUMENTATION */
-    void config3(const eps_config3_t &c);
+    bool config3(const eps_config3_t &c);
 
     /** \brief Send a ping to the NanoPower unit.
      *  \value The value to ping with. The device should send this value back.
      *  \return True if the Gomspace replied with the same code, false otherwise. */
     bool ping(uint8_t value);
-    uint8_t ping_debug(uint8_t value);
     /** \brief Reboot Gomspace. */
     void reboot();
+
+    // Getters for Gomspace values
+    const eps_hk_t& hk_data();
+    const eps_config_t& config();
+    const eps_config2_t& config2();
+    const eps_config3_t& config3();
   private:
     // See struct documentation above for more information
     eps_hk_t hk;
     eps_config_t gspace_config;
     eps_config2_t gspace_config2;
     eps_config3_t gspace_config3;
+
+    // Reads in I2C data and determines if an error code was returned.
+    bool _check_for_error();
 };
 }
 

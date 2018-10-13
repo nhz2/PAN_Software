@@ -3,6 +3,7 @@
 
 #include "../Devices/Device.hpp"
 #include "libsbp/sbp.h"
+#include "libsbp/logging.h"
 #include "libsbp/navigation.h"
 #include "libsbp/observation.h"
 #include "libsbp/settings.h"
@@ -50,16 +51,37 @@ class Piksi : public Device {
      *  \param position A pointer to an array for storing the x,y,z coordinates of the GPS position.
      *  \param accuracy A pointer to a storage variable for the accuracy of the GPS measurement. **/
     void get_pos_ecef(double* tow, double* position[3], double* accuracy);
+    /** \brief Get number of satellites used for determining GPS position.
+     *  \return Number of satellites used for determining GPS position. **/
+    uint8_t get_pos_ecef_nsats();
+    /** \brief Get status flags of GPS position measurement.
+     *  \return Status flags of GPS position measurement. **/
+    uint8_t get_pos_ecef_flags();
+
     /** \brief Gets satellite position in ECEF coordinates relative to base station.
      *  \param tow A pointer to a storage variable for the time-of-week of the GPS measurement.
      *  \param position A pointer to an array for storing the x,y,z coordinates of the GPS position.
      *  \param accuracy A pointer to a storage variable for the accuracy of the GPS measurement. **/
     void get_baseline_ecef(double* tow, double* position[3], double* accuracy);
+    /** \brief Get number of satellites used for determining GPS baseline position.
+     *  \return Number of satellites used for determining GPS baseline position. **/
+    uint8_t get_baseline_ecef_nsats();
+    /** \brief Get status flags of GPS baseline position measurement.
+     *  \return Status flags of GPS baseline position measurement. **/
+    uint8_t get_baseline_ecef_flags();
+    
     /** \brief Gets satellite velocity in ECEF coordinates.
      *  \param tow A pointer to a storage variable for the time-of-week of the GPS measurement.
      *  \param position A pointer to an array for storing the x,y,z coordinates of the GPS position.
      *  \param accuracy A pointer to a storage variable for the accuracy of the GPS measurement. **/
     void get_vel_ecef(double* tow, double* position[3], double* accuracy);
+    /** \brief Get number of satellites used for determining GPS velocity.
+     *  \return Number of satellites used for determining GPS velocity. **/
+    uint8_t get_vel_ecef_nsats();
+    /** \brief Get status flags of GPS velocity measurement.
+     *  \return Status flags of GPS velocity measurement. **/
+    uint8_t get_vel_ecef_flags();
+
     /** \brief Gets base station position in ECEF coordinates.
      *  \param position A pointer to an array for storing the x,y,z coordinates of the base station. **/
     void get_base_pos_ecef(double* position[3]);
@@ -119,6 +141,9 @@ class Piksi : public Device {
     /** \brief Writes the desired settings to the Piksi's RAM.
      * \param Struct containing setting changes for the Piksi. **/
     void settings_write(const msg_settings_write_t &settings);
+    /** \brief Creates settings object containing default settings for PAN.
+     *  \param Settings object to which to write the settings. **/
+    void write_default_settings();
 
     /** \brief Resets Piksi. **/
     void piksi_reset();
@@ -126,9 +151,18 @@ class Piksi : public Device {
     /** \brief Sends custom user data to the Piksi.
      *  \param User data, as an array of (maximally 255) bytes. **/
     void send_user_data(const msg_user_data_t &data);
+
+    /** \brief Dump logbook to a destination, and clear it out.
+     *  \param destination The string to which the log will be dumped. Must be
+     *  large enough to accept all of the logs. */
+    void dump_log(char *destination);
+
+    /** \brief Clear out logbook. */
+    void clear_log();
   private:
     // Internal values required by libsbp. See sbp.c
     sbp_state_t _sbp_state;
+    static sbp_msg_callbacks_node_t _log_callback_node;
     static sbp_msg_callbacks_node_t _gps_time_callback_node;
     static sbp_msg_callbacks_node_t _dops_callback_node;
     static sbp_msg_callbacks_node_t _pos_ecef_callback_node;
@@ -136,11 +170,13 @@ class Piksi : public Device {
     static sbp_msg_callbacks_node_t _vel_ecef_callback_node;
     static sbp_msg_callbacks_node_t _base_pos_ecef_callback_node;
     static sbp_msg_callbacks_node_t _settings_read_resp_callback_node;
+    static sbp_msg_callbacks_node_t _startup_callback_node;
     static sbp_msg_callbacks_node_t _heartbeat_callback_node;
     static sbp_msg_callbacks_node_t _uart_state_callback_node;
     static sbp_msg_callbacks_node_t _user_data_callback_node;
 
     // Callback functions required by libsbp for read functions. See sbp.c
+    static void _log_callback(u16 sender_id, u8 len, u8 msg[], void *context);
     static void _gps_time_callback(u16 sender_id, u8 len, u8 msg[], void *context);
     static void _dops_callback(u16 sender_id, u8 len, u8 msg[], void *context);
     static void _pos_ecef_callback(u16 sender_id, u8 len, u8 msg[], void *context);
@@ -148,6 +184,7 @@ class Piksi : public Device {
     static void _vel_ecef_callback(u16 sender_id, u8 len, u8 msg[], void *context);
     static void _base_pos_ecef_callback(u16 sender_id, u8 len, u8 msg[], void *context);
     static void _settings_read_resp_callback(u16 sender_id, u8 len, u8 msg[], void *context);
+    static void _startup_callback(u16 sender_id, u8 len, u8 msg[], void *context);
     static void _heartbeat_callback(u16 sender_id, u8 len, u8 msg[], void *context);
     static void _uart_state_callback(u16 sender_id, u8 len, u8 msg[], void *context);
     static void _user_data_callback(u16 sender_id, u8 len, u8 msg[], void *context);
@@ -156,7 +193,17 @@ class Piksi : public Device {
     HardwareSerial _serial_port;
     static u32 _uart_write(u8 *buff, u32 n, void *context);
 
-    // Value containers.
+    /** \brief Adds log to log record.
+     *  \param log Log to add, as a msg_log_t object. **/
+    void _insert_log_msg(u8 msg[]);
+
+    // Logging information.
+    static const uint8_t _logbook_max_size = 128;
+    uint8_t _logbook_size; // How much of the logbook is currently being used.
+    msg_log_t _logbook[_logbook_max_size]; // Will contain latest log messages
+    msg_log_t *_latest_log; // Pointer to the latest log in the list
+
+    // Piksi data containers.
     msg_gps_time_t _gps_time;
     msg_dops_t _dops;
     msg_pos_ecef_t _pos_ecef;
@@ -164,11 +211,11 @@ class Piksi : public Device {
     msg_vel_ecef_t _vel_ecef;
     msg_base_pos_ecef_t _base_pos_ecef;
     msg_settings_read_resp_t _settings_read_resp;
+    msg_startup_t _startup;
     msg_heartbeat_t _heartbeat;
     msg_uart_state_t _uart_state;
     msg_user_data_t _user_data;  
 };
 }
-
 
 #endif

@@ -1,8 +1,9 @@
 #include <Arduino.h>
 #include <stdio.h>
-#include <string.h>
+#include <string>
 #include "../Devices/Device.hpp"
 #include "libsbp/sbp.h"
+#include "libsbp/logging.h"
 #include "libsbp/navigation.h"
 #include "libsbp/observation.h"
 #include "libsbp/settings.h"
@@ -14,6 +15,8 @@
 using namespace Devices;
 
 // Initialize callback nodes so that C++ doesn't complain about them not being defined.
+sbp_msg_callbacks_node_t Piksi::_startup_callback_node;
+sbp_msg_callbacks_node_t Piksi::_log_callback_node;
 sbp_msg_callbacks_node_t Piksi::_gps_time_callback_node;
 sbp_msg_callbacks_node_t Piksi::_dops_callback_node;
 sbp_msg_callbacks_node_t Piksi::_pos_ecef_callback_node;
@@ -27,12 +30,14 @@ sbp_msg_callbacks_node_t Piksi::_user_data_callback_node;
 
 Piksi::Piksi(HardwareSerial &serial_port) {
     _serial_port = serial_port;
+    clear_log();
 }
 
 bool Piksi::setup() {
     sbp_state_init(&_sbp_state);
     sbp_state_set_io_context(&_sbp_state, this);
 
+    sbp_msg_callback_t _log_callback_ptr = &Piksi::_log_callback;
     sbp_msg_callback_t _gps_time_callback_ptr = &Piksi::_gps_time_callback;
     sbp_msg_callback_t _dops_callback_ptr = &Piksi::_dops_callback;
     sbp_msg_callback_t _pos_ecef_callback_ptr = &Piksi::_pos_ecef_callback;
@@ -40,12 +45,15 @@ bool Piksi::setup() {
     sbp_msg_callback_t _vel_ecef_callback_ptr = &Piksi::_vel_ecef_callback;
     sbp_msg_callback_t _base_pos_ecef_callback_ptr = &Piksi::_base_pos_ecef_callback;
     sbp_msg_callback_t _settings_read_resp_callback_ptr = &Piksi::_settings_read_resp_callback;
+    sbp_msg_callback_t _startup_callback_ptr = &Piksi::_startup_callback;
     sbp_msg_callback_t _heartbeat_callback_ptr = &Piksi::_heartbeat_callback;
     sbp_msg_callback_t _uart_state_callback_ptr = &Piksi::_uart_state_callback;
     sbp_msg_callback_t _user_data_callback_ptr = &Piksi::_user_data_callback;
 
     uint8_t registration_successful = 0;
     // Register all necessary callbacks for data reads--specification provided in sbp.c
+    registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_LOG, 
+        _log_callback_ptr, nullptr, &Piksi::_log_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_GPS_TIME, 
         _gps_time_callback_ptr, nullptr, &Piksi::_gps_time_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_DOPS, 
@@ -62,12 +70,56 @@ bool Piksi::setup() {
         _settings_read_resp_callback_ptr, nullptr, &Piksi::_settings_read_resp_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_HEARTBEAT, 
         _heartbeat_callback_ptr, nullptr, &Piksi::_heartbeat_callback_node);
+    registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_STARTUP, 
+        _startup_callback_ptr, nullptr, &Piksi::_startup_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_UART_STATE, 
         _uart_state_callback_ptr, nullptr, &Piksi::_uart_state_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_USER_DATA, 
         _user_data_callback_ptr, nullptr, &Piksi::_user_data_callback_node);
 
     return (registration_successful == 0);
+}
+
+void Piksi::write_default_settings() {
+    // Output controls.
+    const char *gpgll_output_rate = "nmea\000gpgll msg rate\0000";
+    const char *gpgsv_output_rate = "nmea\000gpgsv msg rate\0000";
+    const char *gprmc_output_rate = "nmea\000gprmc msg rate\0000";
+    const char *gpvtg_output_rate = "nmea\000gpvtg msg rate\0000";
+    const char *obs_msg_max_size = "sbp\000obs msg max size\000102"; // This is a default specified by SwiftNav
+    const char *obs_output_rate = "solution\000output every n obs\0001";
+    const char *soln_frequency = "solution\000soln freq\00010"; // This is a default specified by SwiftNav
+    const char *broadcast_surveyed_position = "surveyed position\000broadcast\000true";
+    // RTK solution settings.
+    const char *dgnss_solution_mode = "solution\000dgnss solution mode\000TimeMatched";
+    // Hardware watchdog.
+    const char *enable_hardware_watchdog = "system monitor\000watchdog\000true";
+    // Heartbeat output rate.
+    const char *heartbeat_period = "system monitor\000heartbeat period milliseconds\00010000";
+    // Telemetry radio settings TODO
+    const char *telemetry_settings = "telemetry radio\000configuration string\000AT commands for setting up radio go here";
+    
+    // UART A (radio) settings.
+    const char *uart_a_output_mask = "uart uarta\000sbp message mask\0000x0840"; // MSG_OBS | MSG_USER_DATA
+    const char *uart_a_configure_radio_on_boot = "uart uarta\000configure telemetry radio on boot\000true";
+    const char *uart_a_baudrate = "uart uarta\000baudrate\00057600"; // This is a default specified by SwiftNav
+
+    // UART B (controller) output mask.
+    const char *uart_b_output_mask = "uart uarta\000sbp message mask\0000xffff"; // Every message is passed to controller
+    const char *uart_b_configure_radio_on_boot = "uart uarta\000configure telemetry radio on boot\000false";
+    const char *uart_b_baudrate = "uart uarta\000baudrate\000115200";  // This is a default specified by SwiftNav
+
+    // Now write the settings to the device!
+    const char* settings[] = {gpgll_output_rate, gpgsv_output_rate, gprmc_output_rate, gpvtg_output_rate, obs_msg_max_size, 
+        obs_output_rate, soln_frequency, broadcast_surveyed_position, dgnss_solution_mode, enable_hardware_watchdog,  
+        heartbeat_period, telemetry_settings, uart_a_output_mask, uart_a_configure_radio_on_boot, uart_a_baudrate, 
+        uart_b_output_mask, uart_b_configure_radio_on_boot, uart_b_baudrate};
+    for(uint8_t i = 0; i < sizeof(settings) / sizeof(std::string); i++) {
+        msg_settings_write_t setting;
+        memcpy(setting.setting,settings[i],sizeof(settings[i])/sizeof(char));
+        settings_write(setting);
+    }
+    settings_save();
 }
 
 bool Piksi::is_functional() { return get_heartbeat() == 0; }
@@ -100,6 +152,9 @@ void Piksi::get_pos_ecef(double* tow, double* position[3], double* accuracy) {
     *position[2] = _pos_ecef.z;
     *accuracy = _pos_ecef.accuracy;
 }
+uint8_t Piksi::get_pos_ecef_nsats() { return _pos_ecef.n_sats; }
+uint8_t Piksi::get_pos_ecef_flags() { return _pos_ecef.flags; }
+
 void Piksi::get_baseline_ecef(double* tow, double* position[3], double* accuracy) { 
     *tow = _pos_ecef.tow;
     *position[0] = _pos_ecef.x;
@@ -107,6 +162,9 @@ void Piksi::get_baseline_ecef(double* tow, double* position[3], double* accuracy
     *position[2] = _pos_ecef.z;
     *accuracy = _pos_ecef.accuracy;
 }
+uint8_t Piksi::get_baseline_ecef_nsats() { return _baseline_ecef.n_sats; }
+uint8_t Piksi::get_baseline_ecef_flags() { return _baseline_ecef.flags; }
+
 void Piksi::get_vel_ecef(double* tow, double* position[3], double* accuracy) { 
     *tow = _pos_ecef.tow;
     *position[0] = _pos_ecef.x;
@@ -114,6 +172,9 @@ void Piksi::get_vel_ecef(double* tow, double* position[3], double* accuracy) {
     *position[2] = _pos_ecef.z;
     *accuracy = _pos_ecef.accuracy;
 }
+uint8_t Piksi::get_vel_ecef_nsats() { return _vel_ecef.n_sats; }
+uint8_t Piksi::get_vel_ecef_flags() { return _vel_ecef.flags; }
+
 void Piksi::get_base_pos_ecef(double* position[3]) { 
     *position[0] = _pos_ecef.x;
     *position[1] = _pos_ecef.y;
@@ -169,6 +230,26 @@ u32 Piksi::_uart_write(u8 *buff, u32 n, void *context) {
     return i;
 }
 
+void Piksi::_insert_log_msg(u8 msg[]) {
+    _latest_log++;
+    if (_latest_log >= &_logbook[0] + _logbook_max_size) {
+        _latest_log = &_logbook[0];
+    }
+    memcpy(_latest_log, msg, sizeof(msg_log_t));
+    if (_logbook_size < _logbook_max_size) _logbook_size++;
+}
+void Piksi::dump_log(char *destination) {
+    memcpy(destination, (char*) _logbook, _logbook_size * sizeof(msg_log_t));
+}
+void Piksi::clear_log() {
+    _latest_log = &_logbook[0] - 1;
+    _logbook_size = 0;
+}
+
+void Piksi::_log_callback(u16 sender_id, u8 len, u8 msg[], void *context) {
+    Piksi* piksi = (Piksi*) context;
+    piksi->_insert_log_msg(msg);
+}
 void Piksi::_gps_time_callback(u16 sender_id, u8 len, u8 msg[], void *context) {
     Piksi* piksi = (Piksi*) context;
     memcpy((u8*)(&(piksi->_gps_time)), msg, sizeof(msg_gps_time_t));
@@ -200,6 +281,10 @@ void Piksi::_settings_read_resp_callback(u16 sender_id, u8 len, u8 msg[], void *
 void Piksi::_heartbeat_callback(u16 sender_id, u8 len, u8 msg[], void *context) {
     Piksi* piksi = (Piksi*) context;
     memcpy((u8*)(&(piksi->_heartbeat)), msg, sizeof(msg_heartbeat_t));
+}
+void Piksi::_startup_callback(u16 sender_id, u8 len, u8 msg[], void *context) {
+    Piksi* piksi = (Piksi*) context;
+    memcpy((u8*)(&(piksi->_startup)), msg, sizeof(msg_startup_t));
 }
 void Piksi::_uart_state_callback(u16 sender_id, u8 len, u8 msg[], void *context) {
     Piksi* piksi = (Piksi*) context;

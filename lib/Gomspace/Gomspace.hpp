@@ -1,5 +1,3 @@
-// TODO documentation
-
 #include "../Devices/I2CDevice.hpp"
 
 #ifndef GOMSPACE_HPP_
@@ -10,7 +8,7 @@ class Gomspace : public I2CDevice {
   public:
     static const uint8_t ADDRESS = 0x02; /**< I2C address of Gomspace device **/
 
-    /** "Housekeeping" data struct; contains Gomspace state information. */
+    /**< "Housekeeping" data struct; contains Gomspace state information. */
     struct __attribute__((packed)) eps_hk_t {
         uint16_t vboost[3];            //! Voltage of boost converters [mV] [PV1, PV2, PV3] //! Voltage of battery [mV]
         uint16_t vbatt;                //! Voltage of battery [mV]
@@ -37,7 +35,7 @@ class Gomspace : public I2CDevice {
         uint16_t reserved2;
     };
 
-    /** Config data struct; contains output/heater configurations and PPT configuration. */
+    /**< Config data struct; contains output/heater configurations and PPT configuration. */
     struct __attribute__((packed)) eps_config_t {
         uint8_t ppt_mode;                     //! Mode for PPT [1 = AUTO, 2 = FIXED]
         uint8_t battheater_mode;              //! Mode for battheater [0 = Manual, 1 = Auto]
@@ -50,7 +48,7 @@ class Gomspace : public I2CDevice {
         uint16_t vboost[3];                   //! Fixed PPT point for boost converters [mV]
     };
 
-    /** Config2 data struct; contains battery voltage level definitionss. */
+    /**< Config2 data struct; contains battery voltage level definitionss. */
     struct __attribute__((packed)) eps_config2_t {
         uint16_t batt_maxvoltage;
         uint16_t batt_safevoltage;
@@ -60,7 +58,7 @@ class Gomspace : public I2CDevice {
         uint8_t reserved2[4];
     };
 
-    /** Config3 data struct: contains output current limits. */
+    /**< Config3 data struct: contains output current limits. */
     struct __attribute__((packed)) eps_config3_t {
         uint8_t version;
         uint8_t cmd;
@@ -136,9 +134,11 @@ class Gomspace : public I2CDevice {
      *  \value The value to ping with. The device should send this value back.
      *  \return True if the Gomspace replied with the same code, false otherwise. */
     bool ping(uint8_t value);
+    uint8_t ping_debug(uint8_t value);
     /** \brief Reboot Gomspace. */
     void reboot();
   private:
+    // See struct documentation above for more information
     eps_hk_t hk;
     eps_config_t gspace_config;
     eps_config2_t gspace_config2;

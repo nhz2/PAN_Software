@@ -205,6 +205,16 @@ void Gomspace::config3(const eps_config3_t &c) {
     i2c_write(config3_struct, sizeof(eps_config3_t));
 }
 
+uint8_t Gomspace::ping_debug(uint8_t value) {
+    uint8_t PORT_BYTE = 0x01;
+    uint8_t command[2] = {PORT_BYTE, value};
+    i2c_write(command, 2);
+
+    uint8_t buffer[3];
+    i2c_read(buffer, 3);
+    return buffer[2];
+}
+
 bool Gomspace::ping(uint8_t value) {
     uint8_t PORT_BYTE = 0x01;
     uint8_t command[2] = {PORT_BYTE, value};

@@ -13,6 +13,10 @@
 #ifndef LIBSBP_SBP_H
 #define LIBSBP_SBP_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "common.h"
 
 /** \addtogroup sbp
@@ -82,5 +86,8 @@ s8 sbp_process(sbp_state_t *s, u32 (*read)(u8 *buff, u32 n, void* context));
 s8 sbp_send_message(sbp_state_t *s, u16 msg_type, u16 sender_id, u8 len, u8 *payload,
                     u32 (*write)(u8 *buff, u32 n, void* context));
 
-#endif /* LIBSBP_SBP_H */
+#ifdef __cplusplus
+}
+#endif
 
+#endif /* LIBSBP_SBP_H */

@@ -4,7 +4,7 @@
         "chrono": "cpp"
     },
     "terminal.integrated.env.osx": {
-        "PATH": "/Users/tanishqaggarwal/.platformio/penv/bin:/Users/tanishqaggarwal/.platformio/penv:”/Users/tanishqaggarwal/anaconda/bin:/Applications/Postgres.app/Contents/Versions/latest/bin:/Users/tanishqaggarwal/.cargo/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Applications/VMware Fusion.app/Contents/Public:/Library/TeX/texbin:/usr/local/share/dotnet:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/Applications/Postgres.app/Contents/Versions/latest/bin:/usr/local/share/python”",
+        "PATH": "/Users/tanishqaggarwal/.platformio/penv/bin:/Users/tanishqaggarwal/.platformio/penv:”/Users/tanishqaggarwal/anaconda/bin:/Applications/Postgres.app/Contents/Versions/latest/bin:/Users/tanishqaggarwal/.cargo/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Applications/VMware Fusion.app/Contents/Public:/Library/TeX/texbin:/usr/local/share/dotnet:/opt/X11/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/Applications/Postgres.app/Contents/Versions/latest/bin:/usr/local/share/python”",
         "PLATFORMIO_CALLER": "vscode"
     },
 }

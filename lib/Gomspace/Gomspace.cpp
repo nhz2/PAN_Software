@@ -65,6 +65,7 @@ bool Gomspace::get_hk_2() {
     uint8_t command[2] = {PORT_BYTE, CMD_TYPE_BYTE};
     i2c_begin_transmission();
     i2c_write(command, 2);
+    delayMicroseconds(5);
 
     size_t struct_size = sizeof(eps_hk_t);
     uint8_t buffer[struct_size + 2];
@@ -72,6 +73,7 @@ bool Gomspace::get_hk_2() {
     i2c_request_from((struct_size + 2), I2C_NOSTOP);
     i2c_read(buffer, struct_size + 2);
     i2c_end_transmission();
+
     if (buffer[1] != 0) return false;
     else {
         memcpy((uint8_t*)&hk, buffer + 2, struct_size);
@@ -84,6 +86,7 @@ bool Gomspace::set_output(uint8_t output_byte) {
     uint8_t command[2] = {PORT_BYTE, output_byte};
     i2c_begin_transmission();
     i2c_write(command, 2);
+    delayMicroseconds(5);
 
     return _check_for_error();
 }
@@ -93,6 +96,7 @@ bool Gomspace::set_single_output(uint8_t channel, uint8_t value, int16_t time_de
     uint8_t command[5] = {PORT_BYTE, channel, value, (uint8_t)(time_delay >> 8), (uint8_t) time_delay};
     i2c_begin_transmission();
     i2c_write(command, 5);
+    delayMicroseconds(5);
 
     return _check_for_error();
 }
@@ -105,6 +109,7 @@ bool Gomspace::set_pv_volt(uint16_t voltage1, uint16_t voltage2, uint16_t voltag
         (uint8_t)(voltage3 >> 8), (uint8_t) voltage3};
     i2c_begin_transmission();
     i2c_write(command, 7);
+    delayMicroseconds(5);
 
     return _check_for_error();
 }
@@ -114,6 +119,7 @@ bool Gomspace::set_pv_auto(uint8_t mode) {
     uint8_t command[2] = {PORT_BYTE, mode};
     i2c_begin_transmission();
     i2c_write(command, 2);
+    delayMicroseconds(5);
     
     return _check_for_error();
 }
@@ -124,6 +130,7 @@ bool Gomspace::set_heater(uint8_t heater, uint8_t mode) {
     uint8_t command[4] = {PORT_BYTE, COMMAND, heater, mode};
     i2c_begin_transmission();
     i2c_write(command, 4);
+    delayMicroseconds(5);
 
     return _check_for_error();
 }
@@ -133,10 +140,12 @@ uint8_t Gomspace::get_heater() {
     uint8_t command[1] = {PORT_BYTE};
     i2c_begin_transmission();
     i2c_write(command, 1);
+    delayMicroseconds(5);
 
     uint8_t buffer[4];
     i2c_request_from(4, I2C_NOSTOP);
     i2c_read(buffer, 4);
+    i2c_end_transmission();
 
     if (buffer[1] != 0) return 4; // If error occurred, return error code.
     // buffer[2] contains 0 or 1, indicating whether BP4 heater is on.
@@ -150,6 +159,7 @@ bool Gomspace::reset_counters() {
     uint8_t command[2] = {PORT_BYTE, MAGIC_BYTE};
     i2c_begin_transmission();
     i2c_write(command, 2);
+    delayMicroseconds(5);
     
     return _check_for_error();
 }
@@ -160,6 +170,7 @@ bool Gomspace::reset_wdt() {
     uint8_t command[2] = {PORT_BYTE, MAGIC_BYTE};
     i2c_begin_transmission();
     i2c_write(command, 2);
+    delayMicroseconds(5);
     
     return _check_for_error();
 }
@@ -170,6 +181,7 @@ bool Gomspace::restore_default_config() {
     uint8_t command[2] = {PORT_BYTE, COMMAND};
     i2c_begin_transmission();
     i2c_write(command, 2);
+    delayMicroseconds(5);
     
     return _check_for_error();
 }
@@ -179,11 +191,13 @@ bool Gomspace::config_get() {
     uint8_t command[1] = {PORT_BYTE};
     i2c_begin_transmission();
     i2c_write(command, 1);
+    delayMicroseconds(5);
 
     size_t struct_size = sizeof(eps_config_t);
     uint8_t buffer[struct_size + 2];
     i2c_request_from((struct_size + 2), I2C_NOSTOP);
     i2c_read(buffer, struct_size + 2);
+    i2c_end_transmission();
 
     if (buffer[1] != 0) return false;
     else {
@@ -199,6 +213,7 @@ bool Gomspace::config_set(const eps_config_t &c) {
     i2c_begin_transmission();
     i2c_write(command, 1);
     i2c_write(config_struct, sizeof(eps_config_t));
+    delayMicroseconds(5);
 
     return _check_for_error();
 }
@@ -208,6 +223,7 @@ bool Gomspace::hard_reset() {
     uint8_t command[1] = {PORT_BYTE};
     i2c_begin_transmission();
     i2c_write(command, 1);
+    delayMicroseconds(5);
 
     return _check_for_error();
 }
@@ -218,6 +234,7 @@ bool Gomspace::restore_default_config2() {
     uint8_t command[2] = {PORT_BYTE, COMMAND};
     i2c_begin_transmission();
     i2c_write(command, 2);
+    delayMicroseconds(5);
 
     return _check_for_error();
 }
@@ -227,11 +244,14 @@ bool Gomspace::config2_get() {
     uint8_t command[1] = {PORT_BYTE};
     i2c_begin_transmission();
     i2c_write(command, 1);
+    delayMicroseconds(5);
 
     size_t struct_size = sizeof(eps_config2_t);
     uint8_t buffer[struct_size + 2];
     i2c_request_from((struct_size + 2), I2C_NOSTOP);
     i2c_read(buffer, struct_size + 2);
+    i2c_end_transmission();
+
     if (buffer[1] != 0) return false;
     else {
         memcpy((uint8_t*)&gspace_config2, buffer + 2, struct_size);
@@ -246,6 +266,7 @@ bool Gomspace::config2_set(const eps_config2_t &c) {
     i2c_begin_transmission();
     i2c_write(command, 1);
     i2c_write(config2_struct, sizeof(eps_config2_t));
+    delayMicroseconds(5);
 
     return _check_for_error();
 }
@@ -257,6 +278,7 @@ bool Gomspace::config3(const eps_config3_t &c) {
     i2c_begin_transmission();
     i2c_write(command, 1);
     i2c_write(config3_struct, sizeof(eps_config3_t));
+    delayMicroseconds(5);
 
     return _check_for_error();
 }
@@ -266,10 +288,13 @@ bool Gomspace::ping(uint8_t value) {
     uint8_t command[2] = {PORT_BYTE, value};
     i2c_begin_transmission();
     i2c_write(command, 2);
+    delayMicroseconds(5);
 
     uint8_t buffer[3];
     i2c_request_from(3, I2C_NOSTOP);
     i2c_read(buffer, 3);
+    i2c_end_transmission();
+
     return (buffer[1] == 0) && (value == buffer[2]);
 }
 

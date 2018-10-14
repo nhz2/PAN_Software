@@ -28,8 +28,7 @@ sbp_msg_callbacks_node_t Piksi::_heartbeat_callback_node;
 sbp_msg_callbacks_node_t Piksi::_uart_state_callback_node;
 sbp_msg_callbacks_node_t Piksi::_user_data_callback_node;
 
-Piksi::Piksi(HardwareSerial &serial_port) {
-    _serial_port = serial_port;
+Piksi::Piksi(HardwareSerial &serial_port) : _serial_port(serial_port) {
     clear_log();
 }
 

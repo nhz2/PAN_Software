@@ -35,6 +35,45 @@ class Gomspace : public I2CDevice {
         uint16_t reserved2;
     };
 
+    struct __attribute__((packed)) eps_hk_vi_t
+    {
+        uint16_t vboost[3]; //! Voltage of boost converters [mV] [PV1, PV2, PV3]
+        uint16_t vbatt;     //! Voltage of battery [mV]
+        uint16_t curin[3];  //! Current in [mA]
+        uint16_t cursun;    //! Current from boost converters [mA]
+        uint16_t cursys;    //! Current out of battery [mA]
+        uint16_t reserved1; //! Reserved for future use
+    };
+
+    struct __attribute__((packed)) eps_hk_out_t
+    {
+        uint16_t curout[6];           //! Current out (switchable outputs) [mA]
+        uint8_t output[8];            //! Status of outputs**
+        uint16_t output_on_delta[8];  //! Time till power on** [s]
+        uint16_t output_off_delta[8]; //! Time till power off** [s]
+        uint16_t latchup[6];          //! Number of latch-ups
+    };
+
+    struct __attribute__((packed)) eps_hk_wdt_t
+    {
+        uint32_t wdt_i2c_time_left;    //! Time left on I2C wdt [s]
+        uint32_t wdt_gnd_time_left;    //! Time left on I2C wdt [s]
+        uint8_t wdt_csp_pings_left[2]; //! Pings left on CSP wdt
+        uint32_t counter_wdt_i2c;      //! Number of WDT I2C reboots
+        uint32_t counter_wdt_gnd;      //! Number of WDT GND reboots
+        uint32_t counter_wdt_csp[2];   //! Number of WDT CSP reboots
+    };
+
+    struct __attribute__((packed)) eps_hk_basic_t
+    {
+        uint32_t counter_boot; //! Number of EPS reboots
+        int16_t temp[6];       //! Temperatures [degC] [0 = TEMP1, TEMP2, TEMP3, TEMP4, BATT0, BATT1]
+        uint8_t bootcause;     //! Cause of last EPS reset
+        uint8_t battmode;      //! Mode for battery [0 = initial, 1 = undervoltage, 2 = safemode, 3 = nominal, 4=full]
+        uint8_t pptmode;       //! Mode of PPT tracker [1=MPPT, 2=FIXED]
+        uint16_t reserved2;
+    };
+
     /**< Config data struct; contains output/heater configurations and PPT configuration. */
     struct __attribute__((packed)) eps_config_t {
         uint8_t ppt_mode;                     //! Mode for PPT [1 = AUTO, 2 = FIXED]
@@ -58,18 +97,6 @@ class Gomspace : public I2CDevice {
         uint8_t reserved2[4];
     };
 
-    /**< Config3 data struct: contains output current limits. */
-    struct __attribute__((packed)) eps_config3_t {
-        uint8_t version;
-        uint8_t cmd;
-        uint8_t length;
-        uint8_t flags;
-        uint16_t cur_lim[8];
-        uint8_t cur_ema_gain; // TODO what is this?
-        uint8_t cspwdt_channel[2];
-        uint8_t cspwdt_address[2];
-    };
-
     /** \brief Constructs Gomspace interface on the specified wire and with the given address. */
     Gomspace(i2c_t3 &i2c_wire, uint8_t i2c_addr);
 
@@ -81,7 +108,19 @@ class Gomspace : public I2CDevice {
 
     /** \brief Get full housekeeping data struct.
      *  \return True if housekeeping data struct was able to be found, false otherwise. */
-    bool get_hk_2();
+    bool get_hk();
+    /** \brief Get vi housekeeping data struct.
+     *  \return True if housekeeping data struct was able to be found, false otherwise. */
+    bool get_hk_vi();
+    /** \brief Get out housekeeping data struct.
+     *  \return True if housekeeping data struct was able to be found, false otherwise. */
+    bool get_hk_out();
+    /** \brief Get wdt housekeeping data struct.
+     *  \return True if housekeeping data struct was able to be found, false otherwise. */
+    bool get_hk_wdt();
+    /** \brief Get basic housekeeping data struct.
+     *  \return True if housekeeping data struct was able to be found, false otherwise. */
+    bool get_hk_basic();
     /** \brief Set output channels on or off.
      *  \param Output byte that masks channels. */
     bool set_output(uint8_t output_byte);
@@ -127,8 +166,6 @@ class Gomspace : public I2CDevice {
     /** \brief Set config2.
      *  \param Struct of config2 data to set. */
     bool config2_set(const eps_config2_t &config);
-    /** \brief TODO DOCUMENTATION */
-    bool config3(const eps_config3_t &c);
 
     /** \brief Send a ping to the NanoPower unit.
      *  \value The value to ping with. The device should send this value back.
@@ -137,20 +174,23 @@ class Gomspace : public I2CDevice {
     /** \brief Reboot Gomspace. */
     void reboot();
 
-    // Getters for Gomspace values
-    const eps_hk_t& hk_data();
-    const eps_config_t& config();
-    const eps_config2_t& config2();
-    const eps_config3_t& config3();
-  private:
     // See struct documentation above for more information
-    eps_hk_t hk;
+    eps_hk_t hk_data; // Actual data container
+    eps_hk_t *hk = &hk_data; // Pointer to full housekeeping struct
+    eps_hk_vi_t *hk_vi = (eps_hk_vi_t*)((uint8_t*)hk+0);
+    eps_hk_out_t *hk_out = (eps_hk_out_t*)((uint8_t*)hk_vi+sizeof(eps_hk_vi_t));
+    eps_hk_wdt_t *hk_wdt = (eps_hk_wdt_t*)((uint8_t*)hk_out+sizeof(eps_hk_out_t));
+    eps_hk_basic_t *hk_basic = (eps_hk_basic_t*)((uint8_t*)hk_wdt+sizeof(eps_hk_wdt_t));
+
     eps_config_t gspace_config;
     eps_config2_t gspace_config2;
-    eps_config3_t gspace_config3;
-
+  private:
     // Reads in I2C data and determines if an error code was returned.
     bool _check_for_error();
+    // Flips endianness of incoming data frrom I2C
+    int16_t _flip_endian(int16_t n);
+    uint16_t _flip_endian(uint16_t n);
+    uint32_t _flip_endian(uint32_t n);
 };
 }
 

@@ -243,7 +243,7 @@ enum ADCSWarnings : unsigned char {
    *  returning false for is_functional. The spacecraft can continue to run, but
    *  attitude uncertainty will become unbounded over time. Action should be
    *  taken by the flight computer. **/
-  IMU_GRY_NOT_FUNCTIONAL = 28
+  IMU_GYR_NOT_FUNCTIONAL = 28
 
 };
 

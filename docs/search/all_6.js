@@ -18,7 +18,7 @@ var searchData=
   ['i2c_5ftransmit_5fdata',['i2c_transmit_data',['../class_devices_1_1_i2_c_device.html#aa1c53f774f00a69a7619a6c095e5ffb0',1,'Devices::I2CDevice']]],
   ['i2c_5fwrite',['i2c_write',['../class_devices_1_1_i2_c_device.html#acab012e2a96de88a49060fdf33c01706',1,'Devices::I2CDevice::i2c_write(uint8_t data)'],['../class_devices_1_1_i2_c_device.html#acc0c0dec51d0a4e584adaecadd69b2fd',1,'Devices::I2CDevice::i2c_write(T const *data, std::size_t len)']]],
   ['i2cdevice',['I2CDevice',['../class_devices_1_1_i2_c_device.html',1,'Devices::I2CDevice'],['../class_devices_1_1_i2_c_device.html#a4d3a8099d6f4741ecaa5ce7ee31312b0',1,'Devices::I2CDevice::I2CDevice()']]],
-  ['imu_5fgry_5fnot_5ffunctional',['IMU_GRY_NOT_FUNCTIONAL',['../group___a_d_c_s.html#ggad304154c7612c8b959677668c779e5a7a181ac84ab741dbc7c2dc9c388df0d47b',1,'ADCSCommands.hpp']]],
+  ['imu_5fgyr_5fnot_5ffunctional',['IMU_GYR_NOT_FUNCTIONAL',['../group___a_d_c_s.html#ggad304154c7612c8b959677668c779e5a7a0e9e4271a18416cfca50def8e477810e',1,'ADCSCommands.hpp']]],
   ['imu_5fmag_5fnot_5ffunctional',['IMU_MAG_NOT_FUNCTIONAL',['../group___a_d_c_s.html#ggad304154c7612c8b959677668c779e5a7a7e301432d1ca2563eaeeae98ba77be35',1,'ADCSCommands.hpp']]],
   ['init',['init',['../namespacemtr.html#ae682f452a83af12fd301d4634d620bf7',1,'mtr::init()'],['../namespacessa.html#ad2d553898ee8b18b2e9ee8541d49aeee',1,'ssa::init()']]],
   ['is_5ffunctional',['is_functional',['../class_devices_1_1_device.html#a2381511533b5322f58a7cf8b9c677416',1,'Devices::Device::is_functional()'],['../class_devices_1_1_i2_c_device.html#a15eb87401c706fe75b7c8c4ad5154b69',1,'Devices::I2CDevice::is_functional()']]]

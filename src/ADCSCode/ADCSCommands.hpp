@@ -15,14 +15,15 @@
 #ifndef PAN_ADCSCODE_ADCSCOMMANDS_HPP_
 #define PAN_ADCSCODE_ADCSCOMMANDS_HPP_
 
-/** \brief Enumeration of all the warning codes the ADCS system can report.
+/** \enum ADCSWarning
+ *  \brief Enumeration of all the warning codes the ADCS system can report.
  *
  *  The ADCS system has the ability to return hardware and software warnings
  *  over serial communication. The following enum specifies the numerical value
  *  of each warning. Note that each warning will be represented as a single
  *  unsigned char when being transmitted over serial. Any warning ending with
  *  _NOT_FUNCTIONAL is tied to a devices required is_functional function. **/
-enum ADCSWarnings : unsigned char {
+enum ADCSWarning : unsigned char {
   /** \brief Sun sensor ADC 1 is not responding to i2c communication.
    *
    *  If this error is reported by the ADCS system, it means that ADC 1 has

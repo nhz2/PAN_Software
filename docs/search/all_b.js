@@ -10,11 +10,11 @@ var searchData=
   ['single_5fcomp_5ftest',['single_comp_test',['../class_a_d_s1015.html#aa22209930e23993404f322e18b8cb2b5',1,'ADS1015::single_comp_test()'],['../class_devices_1_1_device.html#a1542d2e343cd737413f977ba98adcdfe',1,'Devices::Device::single_comp_test()'],['../class_devices_1_1_gomspace.html#abf93a40c613a5fbfd0e90a688cfa4c1d',1,'Devices::Gomspace::single_comp_test()'],['../class_devices_1_1_m_c_p4162.html#ace086c9fd59629e76fe3ae82dd93f004',1,'Devices::MCP4162::single_comp_test()']]],
   ['spikeandhold',['SpikeAndHold',['../class_devices_1_1_spike_and_hold.html',1,'Devices::SpikeAndHold'],['../class_devices_1_1_spike_and_hold.html#ae414704fc8baf41c059ef59307f67072',1,'Devices::SpikeAndHold::SpikeAndHold()'],['../class_devices_1_1_spike_and_hold.html#ac99dee00ef7e34765079edc92ca686f5',1,'Devices::SpikeAndHold::SpikeAndHold(const uint8_t pins[NUM_VALVES])']]],
   ['ssa',['ssa',['../namespacessa.html',1,'']]],
-  ['ssa_5fadc1_5fnot_5ffunctional',['SSA_ADC1_NOT_FUNCTIONAL',['../group___a_d_c_s.html#ggad304154c7612c8b959677668c779e5a7a123f17166335b823b658ccaf1f5d7996',1,'ADCSCommands.hpp']]],
-  ['ssa_5fadc2_5fnot_5ffunctional',['SSA_ADC2_NOT_FUNCTIONAL',['../group___a_d_c_s.html#ggad304154c7612c8b959677668c779e5a7ae2eeb893034f04e50b7ec8a0f070ca42',1,'ADCSCommands.hpp']]],
-  ['ssa_5fadc3_5fnot_5ffunctional',['SSA_ADC3_NOT_FUNCTIONAL',['../group___a_d_c_s.html#ggad304154c7612c8b959677668c779e5a7a983d24412a5649ae5ca4105ca4fe334f',1,'ADCSCommands.hpp']]],
-  ['ssa_5fadc4_5fnot_5ffunctional',['SSA_ADC4_NOT_FUNCTIONAL',['../group___a_d_c_s.html#ggad304154c7612c8b959677668c779e5a7a30b45cd3b31a1a39b2b17a2c45f36884',1,'ADCSCommands.hpp']]],
-  ['ssa_5fadc5_5fnot_5ffunctional',['SSA_ADC5_NOT_FUNCTIONAL',['../group___a_d_c_s.html#ggad304154c7612c8b959677668c779e5a7aa69ec5ce123a4b0aebc1dec7f29f24fa',1,'ADCSCommands.hpp']]],
-  ['ssa_5flow_5fconfidance',['SSA_LOW_CONFIDANCE',['../group___a_d_c_s.html#ggad304154c7612c8b959677668c779e5a7ad7ecc2311d6ae94fdcaca9d6950e92ac',1,'ADCSCommands.hpp']]],
+  ['ssa_5fadc1_5fnot_5ffunctional',['SSA_ADC1_NOT_FUNCTIONAL',['../group___a_d_c_s.html#gga98b4d6fd0bafac07a169f7e45cd5216ca123f17166335b823b658ccaf1f5d7996',1,'ADCSCommands.hpp']]],
+  ['ssa_5fadc2_5fnot_5ffunctional',['SSA_ADC2_NOT_FUNCTIONAL',['../group___a_d_c_s.html#gga98b4d6fd0bafac07a169f7e45cd5216cae2eeb893034f04e50b7ec8a0f070ca42',1,'ADCSCommands.hpp']]],
+  ['ssa_5fadc3_5fnot_5ffunctional',['SSA_ADC3_NOT_FUNCTIONAL',['../group___a_d_c_s.html#gga98b4d6fd0bafac07a169f7e45cd5216ca983d24412a5649ae5ca4105ca4fe334f',1,'ADCSCommands.hpp']]],
+  ['ssa_5fadc4_5fnot_5ffunctional',['SSA_ADC4_NOT_FUNCTIONAL',['../group___a_d_c_s.html#gga98b4d6fd0bafac07a169f7e45cd5216ca30b45cd3b31a1a39b2b17a2c45f36884',1,'ADCSCommands.hpp']]],
+  ['ssa_5fadc5_5fnot_5ffunctional',['SSA_ADC5_NOT_FUNCTIONAL',['../group___a_d_c_s.html#gga98b4d6fd0bafac07a169f7e45cd5216caa69ec5ce123a4b0aebc1dec7f29f24fa',1,'ADCSCommands.hpp']]],
+  ['ssa_5flow_5fconfidance',['SSA_LOW_CONFIDANCE',['../group___a_d_c_s.html#gga98b4d6fd0bafac07a169f7e45cd5216cad7ecc2311d6ae94fdcaca9d6950e92ac',1,'ADCSCommands.hpp']]],
   ['start_5fread',['start_read',['../class_a_d_s1015.html#a489ffa102f1549c70ba90eca43341085',1,'ADS1015']]]
 ];

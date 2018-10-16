@@ -12,8 +12,8 @@
 /** \addtogroup ADCS
  *  @{ **/
 
-#ifndef PAN_ADCSCODE_ADCSWARNINGS_HPP_
-#define PAN_ADCSCODE_ADCSWARNINGS_HPP_
+#ifndef PAN_ADCSCODE_ADCSCOMMANDS_HPP_
+#define PAN_ADCSCODE_ADCSCOMMANDS_HPP_
 
 /** \brief Enumeration of all the warning codes the ADCS system can report.
  *

@@ -74,6 +74,30 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="enum-members"></a>
 Enumerations</h2></td></tr>
+<tr class="memitem:ga5baa6e3a108b4463fd4f0cf46fdeab9a"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_d_c_s.html#ga5baa6e3a108b4463fd4f0cf46fdeab9a">ADCSMode</a> : unsigned char { <br />
+&#160;&#160;<a class="el" href="group___a_d_c_s.html#gga5baa6e3a108b4463fd4f0cf46fdeab9aa7fb0c1cca10ff57ae7aa3878ba530fbd">NO_CHANGE</a> = 0, 
+<a class="el" href="group___a_d_c_s.html#gga5baa6e3a108b4463fd4f0cf46fdeab9aa63547ef978533be43090c9a22a4fe903">LARGE_ANGLE_SLEW</a> = 1, 
+<a class="el" href="group___a_d_c_s.html#gga5baa6e3a108b4463fd4f0cf46fdeab9aa7c0e32dcce2f59ea93ee2c569e3bf557">HOLD_ATTITUDE</a> = 2, 
+<a class="el" href="group___a_d_c_s.html#gga5baa6e3a108b4463fd4f0cf46fdeab9aa1a0e40c1500d18843bb93e2483a71f74">ZERO_TORQUE</a> = 3, 
+<br />
+&#160;&#160;<a class="el" href="group___a_d_c_s.html#gga5baa6e3a108b4463fd4f0cf46fdeab9aa1faebe1f6194ada0ca738abea6f9383e">DETUMBLE</a> = 4, 
+<a class="el" href="group___a_d_c_s.html#gga5baa6e3a108b4463fd4f0cf46fdeab9aa18d99f1fc2e0599702e776ad847beb62">CONTROLLED_DESPIN</a> = 5, 
+<a class="el" href="group___a_d_c_s.html#gga5baa6e3a108b4463fd4f0cf46fdeab9aa669647637c858e39d28b7ef4059fd559">SAFEHOLD</a> = 6
+<br />
+ }</td></tr>
+<tr class="memdesc:ga5baa6e3a108b4463fd4f0cf46fdeab9a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of all the ADCS modes that the ADCS system can be placed in.  <a href="group___a_d_c_s.html#ga5baa6e3a108b4463fd4f0cf46fdeab9a">More...</a><br /></td></tr>
+<tr class="separator:ga5baa6e3a108b4463fd4f0cf46fdeab9a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gad5eaf7313c9d22f5ee14d5adb9f51577"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_d_c_s.html#gad5eaf7313c9d22f5ee14d5adb9f51577">ADCSRequest</a> : unsigned char { <br />
+&#160;&#160;<a class="el" href="group___a_d_c_s.html#ggad5eaf7313c9d22f5ee14d5adb9f51577ab22c4c17c2c27caeecf7651daa26d2ea">MISSION_DATA</a> = 0, 
+<a class="el" href="group___a_d_c_s.html#ggad5eaf7313c9d22f5ee14d5adb9f51577a8819163cf51227c45192619a0b5dd1b7">SENSOR_HEALTH_SSA</a> = 1, 
+<a class="el" href="group___a_d_c_s.html#ggad5eaf7313c9d22f5ee14d5adb9f51577a6c36ab36fd815f86258433d790811e0d">SENSOR_HEALTH_MTR</a> = 2, 
+<a class="el" href="group___a_d_c_s.html#ggad5eaf7313c9d22f5ee14d5adb9f51577a90ae6ed7ae1d0365247889adda363202">SENSOR_HEALTH_RWA</a> = 3, 
+<br />
+&#160;&#160;<a class="el" href="group___a_d_c_s.html#ggad5eaf7313c9d22f5ee14d5adb9f51577a1be990a1b6454b25a2ffff3847574d23">SENSOR_HEALTH_IMU</a> = 4
+<br />
+ }</td></tr>
+<tr class="memdesc:gad5eaf7313c9d22f5ee14d5adb9f51577"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of all the data requests that can be sent to the ADCS system.  <a href="group___a_d_c_s.html#gad5eaf7313c9d22f5ee14d5adb9f51577">More...</a><br /></td></tr>
+<tr class="separator:gad5eaf7313c9d22f5ee14d5adb9f51577"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga98b4d6fd0bafac07a169f7e45cd5216c"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group___a_d_c_s.html#ga98b4d6fd0bafac07a169f7e45cd5216c">ADCSWarning</a> : unsigned char { <br />
 &#160;&#160;<a class="el" href="group___a_d_c_s.html#gga98b4d6fd0bafac07a169f7e45cd5216ca123f17166335b823b658ccaf1f5d7996">SSA_ADC1_NOT_FUNCTIONAL</a> = 0, 
 <a class="el" href="group___a_d_c_s.html#gga98b4d6fd0bafac07a169f7e45cd5216cae2eeb893034f04e50b7ec8a0f070ca42">SSA_ADC2_NOT_FUNCTIONAL</a> = 1, 
@@ -120,6 +144,80 @@ Enumerations</h2></td></tr>
 <p>Contains the flight code that will run directly on the ADCS computer. </p>
 <p>This includes more complex ADCS specific drivers (e.g. the sun sensor lookup table algorithm), autocoded simulink/MATLAB control algorithms, sensor filtering, and a serial communication handler to interface with the ADCS computer. </p>
 <h2 class="groupheader">Enumeration Type Documentation</h2>
+<a id="ga5baa6e3a108b4463fd4f0cf46fdeab9a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga5baa6e3a108b4463fd4f0cf46fdeab9a">&#9670;&nbsp;</a></span>ADCSMode</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="group___a_d_c_s.html#ga5baa6e3a108b4463fd4f0cf46fdeab9a">ADCSMode</a> : unsigned char</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Enumeration of all the ADCS modes that the ADCS system can be placed in. </p>
+<p>The mode is changed by sending a different mode byte to the ADCS computer over serial communication. Sending the NO_CHANGE code will keep the ADCS system in the most recently specified mode. Note also that some modes require additional arguments to be considered valid. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="gga5baa6e3a108b4463fd4f0cf46fdeab9aa7fb0c1cca10ff57ae7aa3878ba530fbd"></a>NO_CHANGE&#160;</td><td class="fielddoc"><p>Specifies the ADCS system should continue operating in the most recently specified mode. </p>
+<p>If this mode byte is sent to the ADCS system, no change in mode will occur. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="gga5baa6e3a108b4463fd4f0cf46fdeab9aa63547ef978533be43090c9a22a4fe903"></a>LARGE_ANGLE_SLEW&#160;</td><td class="fielddoc"><p>Sets the ADCS system in the large angle slew mode. </p>
+<p>The ADCS system will attempt to hold the specified omega in an intertial frame. This can be used to point prograde, retrograde, etc. Additional arguments that must be specified for this mode include the desired angular rate in ECIF and an initial attitude quaternion. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="gga5baa6e3a108b4463fd4f0cf46fdeab9aa7c0e32dcce2f59ea93ee2c569e3bf557"></a>HOLD_ATTITUDE&#160;</td><td class="fielddoc"><p>Sets the ADCS system in the hold attitude mode. </p>
+<p>The ADCS system will attempt to hold the specified attitude in an inertial frame. This can be used to hold a power favorable attitude for periods of time (after a significant portion of a year the attitude will need to be updated to account for revolution around the sun). Additional arguments that must be specified for this mode are the attitude quaternion in ECIF. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="gga5baa6e3a108b4463fd4f0cf46fdeab9aa1a0e40c1500d18843bb93e2483a71f74"></a>ZERO_TORQUE&#160;</td><td class="fielddoc"><p>Sets the ADCS system into a mode that commands no torques. </p>
+<p>The ADCS system will continue to monitor attitude and determine it's orientation but will not act on anything. This will leave wheels at their current speed and turn MTRs off. No additional arguments are required. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="gga5baa6e3a108b4463fd4f0cf46fdeab9aa1faebe1f6194ada0ca738abea6f9383e"></a>DETUMBLE&#160;</td><td class="fielddoc"><p>Sets the ADCS system to bring the angular rate of the spacecraft to zero. </p>
+<p>The ADCS system will attempt to bring its angular rate in an inertial frame to zero. The wheels will also be brought to within some tolerance of their zero angular momentum state. No additional arguments are required. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="gga5baa6e3a108b4463fd4f0cf46fdeab9aa18d99f1fc2e0599702e776ad847beb62"></a>CONTROLLED_DESPIN&#160;</td><td class="fielddoc"><p>Sets the ADCS system to bring the angular velocity of the RWAs to zero. </p>
+<p>The ADCS system will attempt to bring the angular rate of each of the reaction wheels to zero. RWA saturation warnings should be expected once the reaction wheel speed approaches zero. No additional arguments are required. Current attitude will be held. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="gga5baa6e3a108b4463fd4f0cf46fdeab9aa669647637c858e39d28b7ef4059fd559"></a>SAFEHOLD&#160;</td><td class="fielddoc"><p>Sets the ADCS system to safehold mode. </p>
+<p>The ADCS system will turn off all of it's attitude control peripherals. This means the RWAs and MTRs will be turned off and attitude will be uncontrolled. Attitude determination will continue. No additional arguments are required. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<a id="gad5eaf7313c9d22f5ee14d5adb9f51577"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gad5eaf7313c9d22f5ee14d5adb9f51577">&#9670;&nbsp;</a></span>ADCSRequest</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="group___a_d_c_s.html#gad5eaf7313c9d22f5ee14d5adb9f51577">ADCSRequest</a> : unsigned char</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Enumeration of all the data requests that can be sent to the ADCS system. </p>
+<p>Once a data request is sent to the ADCS system, it will be queued on the ADCS computer and responded to in the first comms frame in which space is available. Each request has a specific payload format that will be specified here. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="ggad5eaf7313c9d22f5ee14d5adb9f51577ab22c4c17c2c27caeecf7651daa26d2ea"></a>MISSION_DATA&#160;</td><td class="fielddoc"><p>Returns general timestamped attitude status of the spacecraft. </p>
+<p>Specifically, this includes the spacecraft's attitude in ECIF, uncertainty in attitude, angular rate in ECIF, uncertainty in anglular rate, and a timestamp for the provided readings. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ggad5eaf7313c9d22f5ee14d5adb9f51577a8819163cf51227c45192619a0b5dd1b7"></a>SENSOR_HEALTH_SSA&#160;</td><td class="fielddoc"><p>Returns the current sun sensor assembly. </p>
+<p>Specifically, this returns an is funcitonal bit followed by the most recent set of twelve bit voltage readings off of each ADC. Lastly, the most recent confidence in sun vector determination is returned. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ggad5eaf7313c9d22f5ee14d5adb9f51577a6c36ab36fd815f86258433d790811e0d"></a>SENSOR_HEALTH_MTR&#160;</td><td class="fielddoc"><p>Returns the current state of the MTRs. </p>
+<p>Specifically, this includes an is funcitonal bit, current signed PWM value, and the MTR axis magnetometer reading for each MTR. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ggad5eaf7313c9d22f5ee14d5adb9f51577a90ae6ed7ae1d0365247889adda363202"></a>SENSOR_HEALTH_RWA&#160;</td><td class="fielddoc"><p>Returns the current state of the reaction wheel assembly. </p>
+<p>Specifically, this includes an is functional bit, current speed, desired speed, current acceleration ramp, and desired ramp for each reaction wheel. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ggad5eaf7313c9d22f5ee14d5adb9f51577a1be990a1b6454b25a2ffff3847574d23"></a>SENSOR_HEALTH_IMU&#160;</td><td class="fielddoc"><p>Returns the current state of the main IMU. </p>
+<p>Specifically, this includes the most recent gyroscope and magnetometer readings in the body frame of the spacecraft along with an is functional bit for both devices. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
 <a id="ga98b4d6fd0bafac07a169f7e45cd5216c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ga98b4d6fd0bafac07a169f7e45cd5216c">&#9670;&nbsp;</a></span>ADCSWarning</h2>
 

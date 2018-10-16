@@ -1,5 +1,6 @@
 var searchData=
 [
+  ['detumble',['DETUMBLE',['../group___a_d_c_s.html#gga5baa6e3a108b4463fd4f0cf46fdeab9aa1faebe1f6194ada0ca738abea6f9383e',1,'ADCSCommands.hpp']]],
   ['device',['Device',['../class_devices_1_1_device.html',1,'Devices']]],
   ['devicemanager',['DeviceManager',['../class_devices_1_1_device_manager.html',1,'Devices::DeviceManager'],['../class_devices_1_1_device_manager.html#ac3527cb1c7d391bd497f46c34d1e3f27',1,'Devices::DeviceManager::DeviceManager()']]],
   ['devices',['Devices',['../namespace_devices.html',1,'Devices'],['../class_devices_1_1_device_manager.html#aa921a91d436d93b66bccbd94e9fa3a9f',1,'Devices::DeviceManager::devices()']]],

@@ -15,6 +15,108 @@
 #ifndef PAN_ADCSCODE_ADCSCOMMANDS_HPP_
 #define PAN_ADCSCODE_ADCSCOMMANDS_HPP_
 
+/** \enum ADCSMode
+ *  \brief Enumeration of all the ADCS modes that the ADCS system can be placed
+ *         in.
+ *
+ *  The mode is changed by sending a different mode byte to the ADCS computer
+ *  over serial communication. Sending the NO_CHANGE code will keep the ADCS
+ *  system in the most recently specified mode. Note also that some modes
+ *  require additional arguments to be considered valid. **/
+enum ADCSMode : unsigned char {
+  /** \brief Specifies the ADCS system should continue operating in the most
+   *         recently specified mode.
+   *
+   *  If this mode byte is sent to the ADCS system, no change in mode will
+   *  occur. **/
+  NO_CHANGE = 0,
+  /** \brief Sets the ADCS system in the large angle slew mode.
+   *
+   *  The ADCS system will attempt to hold the specified omega in an intertial
+   *  frame. This can be used to point prograde, retrograde, etc. Additional
+   *  arguments that must be specified for this mode include the desired
+   *  angular rate in ECIF and an initial attitude quaternion. **/
+  LARGE_ANGLE_SLEW = 1,
+  /** \brief Sets the ADCS system in the hold attitude mode.
+   *
+   *  The ADCS system will attempt to hold the specified attitude in an
+   *  inertial frame. This can be used to hold a power favorable attitude for
+   *  periods of time (after a significant portion of a year the attitude will
+   *  need to be updated to account for revolution around the sun). Additional
+   *  arguments that must be specified for this mode are the attitude quaternion
+   *  in ECIF. **/
+  HOLD_ATTITUDE = 2,
+  /** \brief Sets the ADCS system into a mode that commands no torques.
+   *
+   *  The ADCS system will continue to monitor attitude and determine it's
+   *  orientation but will not act on anything. This will leave wheels at their
+   *  current speed and turn MTRs off. No additional arguments are required. **/
+  ZERO_TORQUE = 3,
+  /** \brief Sets the ADCS system to bring the angular rate of the spacecraft to
+   *         zero.
+   *
+   *  The ADCS system will attempt to bring its angular rate in an inertial
+   *  frame to zero. The wheels will also be brought to within some tolerance of
+   *  their zero angular momentum state. No additional arguments are required.
+   * **/
+  DETUMBLE = 4,
+  /** \brief Sets the ADCS system to bring the angular velocity of the RWAs to
+   *         zero.
+   *
+   *  The ADCS system will attempt to bring the angular rate of each of the
+   *  reaction wheels to zero. RWA saturation warnings should be expected once
+   *  the reaction wheel speed approaches zero. No additional arguments are
+   *  required. Current attitude will be held. **/
+  CONTROLLED_DESPIN = 5,
+  /** \brief Sets the ADCS system to safehold mode.
+   *
+   *  The ADCS system will turn off all of it's attitude control peripherals.
+   *  This means the RWAs and MTRs will be turned off and attitude will be
+   *  uncontrolled. Attitude determination will continue. No additional
+   *  arguments are required. **/
+  SAFEHOLD = 6
+};
+
+/** \enum ADCSRequest
+ *  \brief Enumeration of all the data requests that can be sent to the ADCS
+ *         system.
+ *
+ *  Once a data request is sent to the ADCS system, it will be queued on the
+ *  ADCS computer and responded to in the first comms frame in which space is
+ *  available. Each request has a specific payload format that will be
+ *  specified here. **/
+enum ADCSRequest : unsigned char {
+  /** \brief Returns general timestamped attitude status of the spacecraft.
+   *
+   *  Specifically, this includes the spacecraft's attitude in ECIF, uncertainty
+   *  in attitude, angular rate in ECIF, uncertainty in anglular rate, and a
+   *  timestamp for the provided readings. **/
+  MISSION_DATA = 0,
+  /** \brief Returns the current sun sensor assembly.
+   *
+   *  Specifically, this returns an is funcitonal bit followed by the most
+   *  recent set of twelve bit voltage readings off of each ADC. Lastly, the
+   *  most recent confidence in sun vector determination is returned. **/
+  SENSOR_HEALTH_SSA = 1,
+  /** \brief Returns the current state of the MTRs.
+   *
+   *  Specifically, this includes an is funcitonal bit, current signed PWM
+   *  value, and the MTR axis magnetometer reading for each MTR. **/
+  SENSOR_HEALTH_MTR = 2,
+  /** \brief Returns the current state of the reaction wheel assembly.
+   *
+   *  Specifically, this includes an is functional bit, current speed, desired
+   *  speed, current acceleration ramp, and desired ramp for each reaction
+   *  wheel. **/
+  SENSOR_HEALTH_RWA = 3,
+  /** \brief Returns the current state of the main IMU.
+   *
+   *  Specifically, this includes the most recent gyroscope and magnetometer
+   *  readings in the body frame of the spacecraft along with an is functional
+   *  bit for both devices. **/
+  SENSOR_HEALTH_IMU = 4
+};
+
 /** \enum ADCSWarning
  *  \brief Enumeration of all the warning codes the ADCS system can report.
  *
@@ -245,7 +347,6 @@ enum ADCSWarning : unsigned char {
    *  attitude uncertainty will become unbounded over time. Action should be
    *  taken by the flight computer. **/
   IMU_GYR_NOT_FUNCTIONAL = 28
-
 };
 
 #endif

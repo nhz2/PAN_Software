@@ -18,8 +18,9 @@
 namespace Devices {
 
 namespace DEVICEMANAGER_V1 {
-DeviceManager::DeviceManager(std::vector<Device *> const &devices)
-    : devices(devices) {
+inline DeviceManager::DeviceManager(Device *const *const devices,
+                                    std::size_t len)
+    : devices(devices), len(len) {
   // empty
 }
 
@@ -28,9 +29,7 @@ inline DeviceType &DeviceManager::get_device(std::size_t i) {
   return *static_cast<DeviceType *>(this->devices[i]);
 }
 
-inline std::size_t DeviceManager::get_device_count() const {
-  return this->devices.size();
-}
+inline std::size_t DeviceManager::get_device_count() const { return this->len; }
 
 template <class DeviceType>
 inline void for_each(void (*func)(DeviceType &), std::size_t s = 0,

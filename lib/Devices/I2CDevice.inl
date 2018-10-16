@@ -62,7 +62,7 @@ inline void I2CDevice::i2c_send_transmission(i2c_stop s) {
 }
 
 inline void I2CDevice::i2c_request_from(std::size_t len, i2c_stop s) {
-  bool err = (this->wire.requestFrom(this->addr, len, s, this->timeout) == 0);
+  bool err = (this->wire.requestFrom(this->addr, len, s, this->timeout) != len);
   this->recent_errors = (this->recent_errors || err);
 }
 
@@ -84,12 +84,8 @@ inline void I2CDevice::i2c_write(uint8_t data) {
 
 template <typename T>
 inline void I2CDevice::i2c_write(T const *data, std::size_t len) {
-  bool err = (this->wire.write((uint8_t *)data, len * sizeof(T)) == 0);
+  bool err = (this->wire.write((uint8_t *)data, len * sizeof(T)) != 0);
   this->recent_errors = (this->recent_errors || err);
-}
-
-inline unsigned int I2CDevice::i2c_available() const {
-  return this->wire.available();
 }
 
 // TODO : Double check that this function is implemented properly
@@ -105,14 +101,6 @@ inline void I2CDevice::i2c_read(T *data, std::size_t len) {
   bool err =
       (this->wire.read((uint8_t *)data, len * sizeof(T)) != len * sizeof(T));
   this->recent_errors = (this->recent_errors || err);
-}
-
-// TODO : Double check that this function is implemented properly
-inline uint8_t I2CDevice::i2c_peek() {
-  int val = this->wire.peek();
-  bool err = (val == -1);
-  this->recent_errors = (this->recent_errors || err);
-  return (uint8_t)(val && 0xFF);
 }
 }  // namespace I2CDEVICE_V1
 }  // namespace Devices

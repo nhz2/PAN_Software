@@ -121,6 +121,7 @@ class Gomspace : public I2CDevice {
     /** \brief Get basic housekeeping data struct.
      *  \return True if housekeeping data struct was able to be found, false otherwise. */
     bool get_hk_basic();
+
     /** \brief Set output channels on or off.
      *  \param Output byte that masks channels. */
     bool set_output(uint8_t output_byte);
@@ -129,6 +130,7 @@ class Gomspace : public I2CDevice {
      *  \param Whether to set the channel on or off.
      *  \param Time delay for change, in seconds. */
     bool set_single_output(uint8_t channel, uint8_t value, int16_t time_delay = 0);
+
     /** \brief Set voltage of photovoltaic inputs.
      * \param Voltage of input 1, in mV.
      * \param Voltage of input 2, in mV.
@@ -137,6 +139,7 @@ class Gomspace : public I2CDevice {
     /** \brief Set power point mode (PPT).
      *  \param Which mode to use. See NanoPower documentation for available modes. */
     bool set_pv_auto(uint8_t mode);
+
     /** \brief Set heater values.
      *  \param Heater # to control. 0 = BP4, 1 = onboard, 2 = both.
      *  \param Mode for heater (0 = OFF, 1 = ON). */
@@ -145,20 +148,25 @@ class Gomspace : public I2CDevice {
      *  \return 0 = both heaters off, 1 = BP4 heater is on, 
      *   2 = Onboard heater is on, 3 = both are on, 4 = error reading heater. */
     uint8_t get_heater();
+
     /** \brief Reset boot and WDT counters. */
     bool reset_counters();
     /** \brief Reset I2C watchdog timer. */
     bool reset_wdt();
+
     /** \brief Restores NanoPower to default configuration. */
     bool restore_default_config();
+
     /** \brief Get EPS configuration as a struct.
      *  \return Address of EPS configuration struct. */
     bool config_get();
     /** \brief Set EPS configuration.
      *  \param EPS configuration to set. */
     bool config_set(const eps_config_t &config);
+
     /** \brief Hard reset the Gomspace (and power-cycle all outputs). */
     bool hard_reset();
+
     /** \brief Restores config2 to default config2. */
     bool restore_default_config2();
     /** \brief Get config2 as a struct. */
@@ -175,22 +183,33 @@ class Gomspace : public I2CDevice {
     void reboot();
 
     // See struct documentation above for more information
-    eps_hk_t hk_data; // Actual data container
-    eps_hk_t *hk = &hk_data; // Pointer to full housekeeping struct
-    eps_hk_vi_t *hk_vi = (eps_hk_vi_t*)((uint8_t*)hk+0);
-    eps_hk_out_t *hk_out = (eps_hk_out_t*)((uint8_t*)hk_vi+sizeof(eps_hk_vi_t));
-    eps_hk_wdt_t *hk_wdt = (eps_hk_wdt_t*)((uint8_t*)hk_out+sizeof(eps_hk_out_t));
-    eps_hk_basic_t *hk_basic = (eps_hk_basic_t*)((uint8_t*)hk_wdt+sizeof(eps_hk_wdt_t));
+    /** Pointer to full housekeeping struct **/
+    eps_hk_t *hk;
+    /** Pointer to vi housekeeping struct **/
+    eps_hk_vi_t *hk_vi;
+    /** Pointer to out housekeeping struct **/
+    eps_hk_out_t *hk_out;
+    /** Pointer to wdt housekeeping struct **/
+    eps_hk_wdt_t *hk_wdt;
+    /** Pointer to basic housekeeping struct **/
+    eps_hk_basic_t *hk_basic;
 
     eps_config_t gspace_config;
     eps_config2_t gspace_config2;
   private:
     // Reads in I2C data and determines if an error code was returned.
-    bool _check_for_error();
+    bool _check_for_error(uint8_t port_byte);
     // Flips endianness of incoming data frrom I2C
     int16_t _flip_endian(int16_t n);
     uint16_t _flip_endian(uint16_t n);
     uint32_t _flip_endian(uint32_t n);
+    void _hk_vi_endian_flip();
+    void _hk_out_endian_flip();
+    void _hk_wdt_endian_flip();
+    void _hk_basic_endian_flip();
+
+    /** Actual data container **/
+    eps_hk_t hk_data;
 };
 }
 

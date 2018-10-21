@@ -1,0 +1,1 @@
+Credit to https://github.com/kriswiner/LSM6DSM_LIS2MDL_LPS22HB

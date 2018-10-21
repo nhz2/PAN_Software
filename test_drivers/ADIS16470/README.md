@@ -1,0 +1,1 @@
+Credit to https://github.com/juchong/ADIS16470_Arduino_Teensy/tree/master/ADIS16470

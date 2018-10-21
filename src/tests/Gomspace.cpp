@@ -3,12 +3,20 @@
 #include <Gomspace.hpp>
 using namespace Devices;
 
-#define HK_READ_TESTING
+// #define HK_READ_TESTING
 // #define CONFIG_READ_TESTING
 // #define CONFIG2_READ_TESTING
 // #define HEATER_READ_TESTING
 // #define OUTPUT_TESTING
+// #define SET_PV_VOLT_TESTING
 // #define RESET_COUNTERS_TESTING
+// #define RESET_WDT_TESTING
+// #define RESET_TESTING
+// #define HARD_RESET_TESTING
+// #define HEATER_TESTING
+// #define CONFIG_WRITE_TESTING
+// #define CONFIG2_DEFAULT_WRITE_TESTING
+#define CONFIG2_WRITE_TESTING
 
 Gomspace gs(Wire1, Gomspace::ADDRESS);
 bool setup_result;
@@ -101,34 +109,80 @@ void loop() {
     #ifdef OUTPUT_TESTING
         //Serial.println(gs.set_output(0b00111111));
         Gomspace::eps_hk_t* hk = gs.hk;
-        gs.set_single_output(0, 0);
-        gs.set_single_output(1, 1);
-        gs.set_single_output(2, 1);
-        gs.set_single_output(3, 1);
-        gs.set_single_output(4, 1);
-        gs.set_single_output(5, 1);
-        gs.get_hk();
-        Serial.printf("outputs after off: %d,%d,%d,%d,%d,%d,%d,%d\n", hk->output[0], hk->output[1], hk->output[2],
-            hk->output[3], hk->output[4], hk->output[5], hk->output[6], hk->output[7]);
+
+        Serial.println(gs.set_single_output(0, 1));
         delay(1000);
-        gs.set_single_output(0, 1);
-        gs.set_single_output(1, 0);
-        gs.set_single_output(2, 0);
-        gs.set_single_output(3, 0);
-        gs.set_single_output(4, 0);
-        gs.set_single_output(5, 0);
         gs.get_hk();
         Serial.printf("outputs after on: %d,%d,%d,%d,%d,%d,%d,%d\n", hk->output[0], hk->output[1], hk->output[2],
             hk->output[3], hk->output[4], hk->output[5], hk->output[6], hk->output[7]);
-        delay(3000);
         delay(1000);
+
+        Serial.println(gs.set_single_output(0, 0));
+        delay(20000);
+        gs.get_hk();
+        Serial.printf("outputs after off: %d,%d,%d,%d,%d,%d,%d,%d\n", hk->output[0], hk->output[1], hk->output[2],
+            hk->output[3], hk->output[4], hk->output[5], hk->output[6], hk->output[7]);
     #endif
     #ifdef RESET_COUNTERS_TESTING
-        Serial.println(gs.reset_counters());
         Gomspace::eps_hk_t* hk = gs.hk;
         Serial.println(gs.get_hk());
         Serial.printf("time left on i2c wdt: %d\n", hk->wdt_i2c_time_left);
         Serial.printf("number of reboots due to i2c: %d\n", hk->counter_wdt_i2c);
+        Serial.printf("number of reboots: %d\n", hk->counter_boot);
         delay(4000);
+        Serial.println(gs.reset_counters());
+        delay(500);
+    #endif
+    #ifdef SET_PV_VOLT_TESTING
+        Gomspace::eps_hk_t* hk = gs.hk;
+        gs.get_hk();
+        Gomspace::eps_config_t* config = &gs.gspace_config;
+        gs.config_get();
+
+        gs.set_pv_auto(2);
+        gs.set_pv_volt(3000,3000,3000);
+        delay(1000);
+        Serial.printf("HK PPT mode: %d\n", hk->pptmode);
+        Serial.printf("Boost converter actual voltages: %d,%d,%d\n", hk->vboost[0], hk->vboost[1], hk->vboost[2]);
+        Serial.printf("Boost converter set voltages: %d,%d,%d\n", config->vboost[0], config->vboost[1], config->vboost[2]);
+    #endif
+    #ifdef RESET_WDT_TESTING
+        Gomspace::eps_hk_t* hk = gs.hk;
+        gs.get_hk();
+        Serial.printf("time left on i2c wdt: %d\n", hk->wdt_i2c_time_left);
+        delay(1000);
+        gs.reset_wdt();
+        delay(10000);
+    #endif
+    #ifdef RESET_TESTING
+        Gomspace::eps_hk_t* hk = gs.hk;
+        Serial.printf("number of reboots: %d\n", hk->counter_boot);
+        gs.reset();
+        delay(4000);
+        gs.get_hk();
+        delay(500);
+        Serial.printf("number of reboots: %d\n", hk->counter_boot); // Should be one more.
+    #endif
+    #ifdef HARD_RESET_TESTING
+        Serial.println("Resetting outputs...");
+        gs.hard_reset();
+        delay(100);
+    #endif
+    #ifdef HEATER_TESTING
+        Serial.println("Testing heater...");
+        delay(5000);
+        Serial.println(gs.turn_on_heater());
+        while(true);
+    #endif
+    #ifdef CONFIG2_WRITE_TESTING
+        Serial.println("Writing custom config2 values...");
+        Gomspace::eps_config2_t new_config = {8300, 6700, 6500, 7000};
+        Serial.println(gs.config2_set(new_config));
+        delay(5000);
+    #endif
+    #ifdef CONFIG2_DEFAULT_WRITE_TESTING
+        Serial.println("Writing custom config2 values...");
+        Serial.println(gs.restore_default_config2());
+        delay(5000);
     #endif
 }

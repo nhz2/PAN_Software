@@ -3,6 +3,8 @@
 #ifndef GOMSPACE_HPP_
 #define GOMSPACE_HPP_
 
+#define DEBUG
+
 namespace Devices {
 class Gomspace : public I2CDevice {
   public:
@@ -140,22 +142,18 @@ class Gomspace : public I2CDevice {
      *  \param Which mode to use. See NanoPower documentation for available modes. */
     bool set_pv_auto(uint8_t mode);
 
-    /** \brief Set heater values.
-     *  \param Heater # to control. 0 = BP4, 1 = onboard, 2 = both.
-     *  \param Mode for heater (0 = OFF, 1 = ON). */
-    bool set_heater(uint8_t heater, uint8_t mode);
+    /** \brief Turn on/off the onboard heater.
+     *  \param Mode for heater (false = OFF, true = ON). */
+    bool turn_on_heater();
+    bool turn_off_heater();
     /** \brief Get heater status.
-     *  \return 0 = both heaters off, 1 = BP4 heater is on, 
-     *   2 = Onboard heater is on, 3 = both are on, 4 = error reading heater. */
+     *  \return 0 = onboard heater off, 1 = onboard heater is on, 2 = error reading heater. */
     uint8_t get_heater();
 
     /** \brief Reset boot and WDT counters. */
     bool reset_counters();
     /** \brief Reset I2C watchdog timer. */
     bool reset_wdt();
-
-    /** \brief Restores NanoPower to default configuration. */
-    bool restore_default_config();
 
     /** \brief Get EPS configuration as a struct.
      *  \return Address of EPS configuration struct. */
@@ -167,13 +165,13 @@ class Gomspace : public I2CDevice {
     /** \brief Hard reset the Gomspace (and power-cycle all outputs). */
     bool hard_reset();
 
-    /** \brief Restores config2 to default config2. */
-    bool restore_default_config2();
     /** \brief Get config2 as a struct. */
     bool config2_get();
     /** \brief Set config2.
      *  \param Struct of config2 data to set. */
     bool config2_set(const eps_config2_t &config);
+    /** \brief Restore default config2. */
+    bool restore_default_config2();
 
     /** \brief Send a ping to the NanoPower unit.
      *  \value The value to ping with. The device should send this value back.
@@ -194,15 +192,17 @@ class Gomspace : public I2CDevice {
     /** Pointer to basic housekeeping struct **/
     eps_hk_basic_t *hk_basic;
 
+    /** Configuration storage struct. **/
     eps_config_t gspace_config;
+    /** Configuration 2 storage struct. **/
     eps_config2_t gspace_config2;
   private:
+    bool _set_heater(bool mode);
     // Reads in I2C data and determines if an error code was returned.
     bool _check_for_error(uint8_t port_byte);
-    // Flips endianness of incoming data frrom I2C
-    int16_t _flip_endian(int16_t n);
-    uint16_t _flip_endian(uint16_t n);
-    uint32_t _flip_endian(uint32_t n);
+    // Commits changes to config2 to the permanent storage of the Gomspace.
+    bool _config2_confirm();
+    // Flips endianness of incoming data from I2C
     void _hk_vi_endian_flip();
     void _hk_out_endian_flip();
     void _hk_wdt_endian_flip();

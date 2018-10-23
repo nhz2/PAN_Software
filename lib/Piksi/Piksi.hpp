@@ -16,11 +16,23 @@ class Piksi : public Device {
   public:
     Piksi(HardwareSerial &serial_port);
 
+    // Output struct definitions
+    struct position_t {
+      u32 tow; // Time of week
+      double position[3];
+      double accuracy;
+    };
+    struct velocity_t {
+      u32 tow; // Time of week
+      double velocity[3];
+      double accuracy;
+    };
+
     // Standard device functions
     bool setup() override;
     bool is_functional() override;
     void reset() override;
-    void disable() override;
+    void disable() override; // Sets Piksi's power consumption to a minimum
     void single_comp_test() override;
 
     /** \brief Gets GPS time. 
@@ -47,10 +59,8 @@ class Piksi : public Device {
     uint16_t get_dops_vertical();
 
     /** \brief Gets satellite position in ECEF coordinates.
-     *  \param tow A pointer to a storage variable for the time-of-week of the GPS measurement.
-     *  \param position A pointer to an array for storing the x,y,z coordinates of the GPS position.
-     *  \param accuracy A pointer to a storage variable for the accuracy of the GPS measurement. **/
-    void get_pos_ecef(double* tow, double* position[3], double* accuracy);
+     *  \param position A pointer to the destination struct for the information. **/
+    void get_pos_ecef(position_t* position);
     /** \brief Get number of satellites used for determining GPS position.
      *  \return Number of satellites used for determining GPS position. **/
     uint8_t get_pos_ecef_nsats();
@@ -59,10 +69,8 @@ class Piksi : public Device {
     uint8_t get_pos_ecef_flags();
 
     /** \brief Gets satellite position in ECEF coordinates relative to base station.
-     *  \param tow A pointer to a storage variable for the time-of-week of the GPS measurement.
-     *  \param position A pointer to an array for storing the x,y,z coordinates of the GPS position.
-     *  \param accuracy A pointer to a storage variable for the accuracy of the GPS measurement. **/
-    void get_baseline_ecef(double* tow, double* position[3], double* accuracy);
+     *  \param position A pointer to the destination struct for the information. **/
+    void get_baseline_ecef(position_t* position);
     /** \brief Get number of satellites used for determining GPS baseline position.
      *  \return Number of satellites used for determining GPS baseline position. **/
     uint8_t get_baseline_ecef_nsats();
@@ -71,10 +79,8 @@ class Piksi : public Device {
     uint8_t get_baseline_ecef_flags();
     
     /** \brief Gets satellite velocity in ECEF coordinates.
-     *  \param tow A pointer to a storage variable for the time-of-week of the GPS measurement.
-     *  \param position A pointer to an array for storing the x,y,z coordinates of the GPS position.
-     *  \param accuracy A pointer to a storage variable for the accuracy of the GPS measurement. **/
-    void get_vel_ecef(double* tow, double* position[3], double* accuracy);
+     *  \param position A pointer to the destination struct for the information. **/
+    void get_vel_ecef(velocity_t* velocity);
     /** \brief Get number of satellites used for determining GPS velocity.
      *  \return Number of satellites used for determining GPS velocity. **/
     uint8_t get_vel_ecef_nsats();
@@ -189,9 +195,10 @@ class Piksi : public Device {
     static void _uart_state_callback(u16 sender_id, u8 len, u8 msg[], void *context);
     static void _user_data_callback(u16 sender_id, u8 len, u8 msg[], void *context);
 
-    // Required writing function by libsbp. See libsbp.c
+    // Required writing and reading functions by libsbp. See sbp.c
     HardwareSerial _serial_port;
     static u32 _uart_write(u8 *buff, u32 n, void *context);
+    static u32 _uart_read(u8 *buff, u32 n, void *context);
 
     /** \brief Adds log to log record.
      *  \param log Log to add, as a msg_log_t object. **/

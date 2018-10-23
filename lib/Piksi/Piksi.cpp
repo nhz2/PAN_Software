@@ -28,14 +28,16 @@ sbp_msg_callbacks_node_t Piksi::_heartbeat_callback_node;
 sbp_msg_callbacks_node_t Piksi::_uart_state_callback_node;
 sbp_msg_callbacks_node_t Piksi::_user_data_callback_node;
 
-Piksi::Piksi(HardwareSerial &serial_port) : _serial_port(serial_port) {
-    clear_log();
-}
+Piksi::Piksi(HardwareSerial &serial_port) : _serial_port(serial_port) {}
 
 bool Piksi::setup() {
+    clear_log();
+    _heartbeat.flags = 1; // By default, let there be an error in the system.
+
     sbp_state_init(&_sbp_state);
     sbp_state_set_io_context(&_sbp_state, this);
 
+    // Register all necessary callbacks for data reads--specification provided in sbp.c
     sbp_msg_callback_t _log_callback_ptr = &Piksi::_log_callback;
     sbp_msg_callback_t _gps_time_callback_ptr = &Piksi::_gps_time_callback;
     sbp_msg_callback_t _dops_callback_ptr = &Piksi::_dops_callback;
@@ -50,7 +52,6 @@ bool Piksi::setup() {
     sbp_msg_callback_t _user_data_callback_ptr = &Piksi::_user_data_callback;
 
     uint8_t registration_successful = 0;
-    // Register all necessary callbacks for data reads--specification provided in sbp.c
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_LOG, 
         _log_callback_ptr, nullptr, &Piksi::_log_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_GPS_TIME, 
@@ -124,8 +125,9 @@ void Piksi::write_default_settings() {
 bool Piksi::is_functional() { return get_heartbeat() == 0; }
 void Piksi::reset() { piksi_reset(); }
 
-// Cannot disable Piksi, since Piksi is integral to the system. So this function is left unimplemented.
-void Piksi::disable() { }
+void Piksi::disable() {
+    // TODO
+}
 
 void Piksi::single_comp_test() { /** TODO **/ }
 
@@ -144,32 +146,32 @@ uint16_t Piksi::get_dops_time()  { return _dops.tdop; }
 uint16_t Piksi::get_dops_horizontal()  {  return _dops.hdop; }
 uint16_t Piksi::get_dops_vertical()  { return _dops.vdop; }
 
-void Piksi::get_pos_ecef(double* tow, double* position[3], double* accuracy) { 
-    *tow = _pos_ecef.tow;
-    *position[0] = _pos_ecef.x;
-    *position[1] = _pos_ecef.y;
-    *position[2] = _pos_ecef.z;
-    *accuracy = _pos_ecef.accuracy;
+void Piksi::get_pos_ecef(Piksi::position_t* position) { 
+    position->tow = _pos_ecef.tow;
+    position->position[0] = _pos_ecef.x;
+    position->position[1] = _pos_ecef.y;
+    position->position[2] = _pos_ecef.z;
+    position->accuracy = _pos_ecef.accuracy;
 }
 uint8_t Piksi::get_pos_ecef_nsats() { return _pos_ecef.n_sats; }
 uint8_t Piksi::get_pos_ecef_flags() { return _pos_ecef.flags; }
 
-void Piksi::get_baseline_ecef(double* tow, double* position[3], double* accuracy) { 
-    *tow = _pos_ecef.tow;
-    *position[0] = _pos_ecef.x;
-    *position[1] = _pos_ecef.y;
-    *position[2] = _pos_ecef.z;
-    *accuracy = _pos_ecef.accuracy;
+void Piksi::get_baseline_ecef(Piksi::position_t* position) { 
+    position->tow = _pos_ecef.tow;
+    position->position[0] = _pos_ecef.x;
+    position->position[1] = _pos_ecef.y;
+    position->position[2] = _pos_ecef.z;
+    position->accuracy = _pos_ecef.accuracy;
 }
 uint8_t Piksi::get_baseline_ecef_nsats() { return _baseline_ecef.n_sats; }
 uint8_t Piksi::get_baseline_ecef_flags() { return _baseline_ecef.flags; }
 
-void Piksi::get_vel_ecef(double* tow, double* position[3], double* accuracy) { 
-    *tow = _pos_ecef.tow;
-    *position[0] = _pos_ecef.x;
-    *position[1] = _pos_ecef.y;
-    *position[2] = _pos_ecef.z;
-    *accuracy = _pos_ecef.accuracy;
+void Piksi::get_vel_ecef(Piksi::velocity_t* velocity) { 
+    velocity->tow = _pos_ecef.tow;
+    velocity->velocity[0] = _pos_ecef.x;
+    velocity->velocity[1] = _pos_ecef.y;
+    velocity->velocity[2] = _pos_ecef.z;
+    velocity->accuracy = _pos_ecef.accuracy;
 }
 uint8_t Piksi::get_vel_ecef_nsats() { return _vel_ecef.n_sats; }
 uint8_t Piksi::get_vel_ecef_flags() { return _vel_ecef.flags; }
@@ -217,6 +219,20 @@ void Piksi::piksi_reset()  {
 void Piksi::send_user_data(const msg_user_data_t &data)  {
     sbp_send_message(&_sbp_state, SBP_MSG_USER_DATA, SBP_SENDER_ID,
         sizeof(msg_user_data_t), (uint8_t*) &data, &Piksi::_uart_write);
+}
+
+u32 Piksi::_uart_read(u8 *buff, u32 n, void *context) {
+    Piksi* piksi = (Piksi*) context;
+    HardwareSerial sp = piksi->_serial_port;
+    
+    u32 i;
+    for (i = 0; i < n; i++) {
+        if (sp.available())
+            buff[i] = sp.read();
+        else
+            break;
+    }
+    return i;
 }
 
 u32 Piksi::_uart_write(u8 *buff, u32 n, void *context) {

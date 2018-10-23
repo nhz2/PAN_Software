@@ -66,6 +66,13 @@ inline void I2CDevice::i2c_request_from(std::size_t len, i2c_stop s) {
   this->recent_errors = (this->recent_errors || err);
 }
 
+inline void I2CDevice::i2c_request_from_subaddr(uint8_t subaddr, std::size_t len) {
+  i2c_begin_transmission();
+  i2c_write(subaddr);
+  i2c_end_transmission();
+  i2c_request_from(len, I2C_NOSTOP);
+}
+
 inline void I2CDevice::i2c_send_request(std::size_t len, i2c_stop s) {
   this->wire.sendRequest(this->addr, len, s);
 }

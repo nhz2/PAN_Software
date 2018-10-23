@@ -131,6 +131,10 @@ class I2CDevice : public Device {
   /** \brief See Wire.requestFrom in i2c_t3. Any error will be recorded in the
    *         recent error history variable. **/
   inline void i2c_request_from(std::size_t len, i2c_stop s = I2C_STOP);
+  /** \brief Request from a sublocation on a device. Will not generate a stop 
+   * condition at the end of the request. See i2c_request_from.
+   *  \param subaddress Subaddress to read from I2C device. **/
+  inline void i2c_request_from_subaddr(uint8_t subaddr, std::size_t len);
   /** \brief See Wire.sendRequest in i2c_t3. Any error will be recorded in the
    *         recent error history variable. **/
   inline void i2c_send_request(std::size_t len, i2c_stop s = I2C_STOP);

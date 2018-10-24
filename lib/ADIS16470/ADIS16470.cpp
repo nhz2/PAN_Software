@@ -33,6 +33,8 @@
 
 #include "ADIS16470.h"
 
+using namespace Devices;
+
 ////////////////////////////////////////////////////////////////////////////
 // Constructor with configurable CS, DR, and RST
 ////////////////////////////////////////////////////////////////////////////
@@ -40,40 +42,48 @@
 // DR - DR output pin for data ready
 // RST - Hardware reset pin
 ////////////////////////////////////////////////////////////////////////////
-ADIS16470::ADIS16470(int CS, int DR, int RST) {
-  _CS = CS;
-  _DR = DR;
-  _RST = RST;
-// Initialize SPI
-  SPI.begin();
-// Configure SPI controller
-  configSPI();
-// Set default pin states
-  pinMode(_CS, OUTPUT); // Set CS pin to be an output
-  pinMode(_DR, INPUT); // Set DR pin to be an input
-  pinMode(_RST, OUTPUT); // Set RST pin to be an output
-  digitalWrite(_CS, HIGH); // Initialize CS pin to be high
-  digitalWrite(_RST, HIGH); // Initialize RST pin to be high
+ADIS16470::ADIS16470(uint8_t CS, uint8_t DR, uint8_t RST) {
+    _CS = CS;
+    _DR = DR;
+    _RST = RST;
+    // Initialize SPI
+    SPI.begin();
+    // Configure SPI controller
+    config_SPI();
+    // Set default pin states
+    pinMode(_CS, OUTPUT); // Set CS pin to be an output
+    pinMode(_DR, INPUT); // Set DR pin to be an input
+    pinMode(_RST, OUTPUT); // Set RST pin to be an output
+    digitalWrite(_CS, HIGH); // Initialize CS pin to be high
+    digitalWrite(_RST, HIGH); // Initialize RST pin to be high
 }
+
+bool ADIS16470::setup() { return config_SPI(); }
+void ADIS16470::reset() { reset_DUT(5); }
+void ADIS16470::disable() { /** TODO **/ }
+bool ADIS16470::is_functional() {
+    return (reg_read(REGISTER_ADDRESSES::DIAG_STAT) == 0);
+}
+void ADIS16470::single_comp_test() { /** TODO **/ }
 
 ////////////////////////////////////////////////////////////////////////////
 // Destructor
 ////////////////////////////////////////////////////////////////////////////
 ADIS16470::~ADIS16470() {
-  // Close SPI bus
-  SPI.end();
+    // Close SPI bus
+    SPI.end();
 }
 
 ////////////////////////////////////////////////////////////////////////////
 // Performs a hardware reset by setting _RST pin low for delay (in ms).
 // Returns 1 when complete.
 ////////////////////////////////////////////////////////////////////////////
-int ADIS16470::resetDUT(uint8_t ms) {
-  digitalWrite(_RST, LOW);
-  delay(100);
-  digitalWrite(_RST, HIGH);
-  delay(ms);
-  return(1);
+bool ADIS16470::reset_DUT(uint8_t ms) {
+    digitalWrite(_RST, LOW);
+    delay(100);
+    digitalWrite(_RST, HIGH);
+    delay(ms);
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -81,10 +91,10 @@ int ADIS16470::resetDUT(uint8_t ms) {
 // when there are multiple SPI devices using different settings.
 // Returns 1 when complete.
 ////////////////////////////////////////////////////////////////////////////
-int ADIS16470::configSPI() {
-  SPISettings IMUSettings(1000000, MSBFIRST, SPI_MODE3);
-  SPI.beginTransaction(IMUSettings);
-  return(1);
+bool ADIS16470::config_SPI() {
+    SPISettings IMUSettings(1000000, MSBFIRST, SPI_MODE3);
+    SPI.beginTransaction(IMUSettings);
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -93,29 +103,29 @@ int ADIS16470::configSPI() {
 ////////////////////////////////////////////////////////////////////////////////////////////
 // regAddr - address of register to be read
 ////////////////////////////////////////////////////////////////////////////////////////////
-int16_t ADIS16470::regRead(uint8_t regAddr) {
-//Read registers using SPI
+int16_t ADIS16470::reg_read(uint8_t reg_addr) {
+    //Read registers using SPI
   
-  // Write register address to be read
-  digitalWrite(_CS, LOW); // Set CS low to enable device
-  SPI.transfer(regAddr); // Write address over SPI bus
-  SPI.transfer(0x00); // Write 0x00 to the SPI bus fill the 16 bit transaction requirement
-  digitalWrite(_CS, HIGH); // Set CS high to disable device
+    // Write register address to be read
+    digitalWrite(_CS, LOW); // Set CS low to enable device
+    SPI.transfer(reg_addr); // Write address over SPI bus
+    SPI.transfer(0x00); // Write 0x00 to the SPI bus fill the 16 bit transaction requirement
+    digitalWrite(_CS, HIGH); // Set CS high to disable device
 
-  delayMicroseconds(_stall); // Delay to not violate read rate 
+    delayMicroseconds(_stall); // Delay to not violate read rate 
 
-  // Read data from requested register
-  digitalWrite(_CS, LOW); // Set CS low to enable device
-  uint8_t _msbData = SPI.transfer(0x00); // Send (0x00) and place upper byte into variable
-  uint8_t _lsbData = SPI.transfer(0x00); // Send (0x00) and place lower byte into variable
-  digitalWrite(_CS, HIGH); // Set CS high to disable device
+    // Read data from requested register
+    digitalWrite(_CS, LOW); // Set CS low to enable device
+    uint8_t _msb_data = SPI.transfer(0x00); // Send (0x00) and place upper byte into variable
+    uint8_t _lsb_data = SPI.transfer(0x00); // Send (0x00) and place lower byte into variable
+    digitalWrite(_CS, HIGH); // Set CS high to disable device
 
-  delayMicroseconds(_stall); // Delay to not violate read rate 
+    delayMicroseconds(_stall); // Delay to not violate read rate 
   
-  int16_t _dataOut = (_msbData << 8) | (_lsbData & 0xFF); // Concatenate upper and lower bytes
-  // Shift MSB data left by 8 bits, mask LSB data with 0xFF, and OR both bits.
+    int16_t _data_out = (_msb_data << 8) | (_lsb_data & 0xFF); // Concatenate upper and lower bytes
+    // Shift MSB data left by 8 bits, mask LSB data with 0xFF, and OR both bits.
 
-  return(_dataOut);
+    return(_data_out);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -125,36 +135,36 @@ int16_t ADIS16470::regRead(uint8_t regAddr) {
 // regAddr - address of register to be written
 // regData - data to be written to the register
 ////////////////////////////////////////////////////////////////////////////
-int ADIS16470::regWrite(uint8_t regAddr, int16_t regData) {
+bool ADIS16470::reg_write(uint8_t reg_addr, int16_t reg_data) {
 
-  // Write register address and data
-  uint16_t addr = (((regAddr & 0x7F) | 0x80) << 8); // Toggle sign bit, and check that the address is 8 bits
-  uint16_t lowWord = (addr | (regData & 0xFF)); // OR Register address (A) with data(D) (AADD)
-  uint16_t highWord = ((addr | 0x100) | ((regData >> 8) & 0xFF)); // OR Register address with data and increment address
+    // Write register address and data
+    uint16_t addr = (((reg_addr & 0x7F) | 0x80) << 8); // Toggle sign bit, and check that the address is 8 bits
+    uint16_t low_word = (addr | (reg_data & 0xFF)); // OR Register address (A) with data(D) (AADD)
+    uint16_t high_word = ((addr | 0x100) | ((reg_data >> 8) & 0xFF)); // OR Register address with data and increment address
 
-  // Split words into chars
-  uint8_t highBytehighWord = (highWord >> 8);
-  uint8_t lowBytehighWord = (highWord & 0xFF);
-  uint8_t highBytelowWord = (lowWord >> 8);
-  uint8_t lowBytelowWord = (lowWord & 0xFF);
+    // Split words into chars
+    uint8_t high_byte_high_word = (high_word >> 8);
+    uint8_t low_byte_high_word = (high_word & 0xFF);
+    uint8_t high_byte_low_word = (low_word >> 8);
+    uint8_t low_byte_low_word = (low_word & 0xFF);
 
-  // Write highWord to SPI bus
-  digitalWrite(_CS, LOW); // Set CS low to enable device
-  SPI.transfer(highBytelowWord); // Write high byte from low word to SPI bus
-  SPI.transfer(lowBytelowWord); // Write low byte from low word to SPI bus
-  digitalWrite(_CS, HIGH); // Set CS high to disable device
+    // Write high_word to SPI bus
+    digitalWrite(_CS, LOW); // Set CS low to enable device
+    SPI.transfer(high_byte_low_word); // Write high byte from low word to SPI bus
+    SPI.transfer(low_byte_low_word); // Write low byte from low word to SPI bus
+    digitalWrite(_CS, HIGH); // Set CS high to disable device
 
-  delayMicroseconds(_stall);; // Delay to not violate read rate 
+    delayMicroseconds(_stall);; // Delay to not violate read rate 
 
-  // Write lowWord to SPI bus
-  digitalWrite(_CS, LOW); // Set CS low to enable device
-  SPI.transfer(highBytehighWord); // Write high byte from high word to SPI bus
-  SPI.transfer(lowBytehighWord); // Write low byte from high word to SPI bus
-  digitalWrite(_CS, HIGH); // Set CS high to disable device
+    // Write low_word to SPI bus
+    digitalWrite(_CS, LOW); // Set CS low to enable device
+    SPI.transfer(high_byte_high_word); // Write high byte from high word to SPI bus
+    SPI.transfer(low_byte_high_word); // Write low byte from high word to SPI bus
+    digitalWrite(_CS, HIGH); // Set CS high to disable device
 
-  delayMicroseconds(_stall);; // Delay to not violate read rate 
+    delayMicroseconds(_stall);; // Delay to not violate read rate 
 
-  return(1);
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -163,40 +173,38 @@ int ADIS16470::regWrite(uint8_t regAddr, int16_t regData) {
 ////////////////////////////////////////////////////////////////////////////
 // No inputs required.
 ////////////////////////////////////////////////////////////////////////////
-uint8_t *ADIS16470::byteBurst(void) {
+uint8_t *ADIS16470::byte_burst(void) {
+    static uint8_t burst_data[20];
 
-	static uint8_t burstdata[20];
+    // Trigger Burst Read
+    digitalWrite(_CS, LOW);
+    SPI.transfer(0x68);
+    SPI.transfer(0x00);
 
-	// Trigger Burst Read
-	digitalWrite(_CS, LOW);
-	SPI.transfer(0x68);
-	SPI.transfer(0x00);
+    // Read Burst Data
+    burst_data[0] = SPI.transfer(0x00); //DIAG_STAT
+    burst_data[1] = SPI.transfer(0x00);
+    burst_data[2] = SPI.transfer(0x00); //XGYRO_OUT
+    burst_data[3] = SPI.transfer(0x00);
+    burst_data[4] = SPI.transfer(0x00); //YGYRO_OUT
+    burst_data[5] = SPI.transfer(0x00);
+    burst_data[6] = SPI.transfer(0x00); //ZGYRO_OUT
+    burst_data[7] = SPI.transfer(0x00);
+    burst_data[8] = SPI.transfer(0x00); //XACCEL_OUT
+    burst_data[9] = SPI.transfer(0x00);
+    burst_data[10] = SPI.transfer(0x00); //YACCEL_OUT
+    burst_data[11] = SPI.transfer(0x00);
+    burst_data[12] = SPI.transfer(0x00); //ZACCEL_OUT
+    burst_data[13] = SPI.transfer(0x00);
+    burst_data[14] = SPI.transfer(0x00); //TEMP_OUT
+    burst_data[15] = SPI.transfer(0x00);
+    burst_data[16] = SPI.transfer(0x00); //TIME_STMP
+    burst_data[17] = SPI.transfer(0x00);
+    burst_data[18] = SPI.transfer(0x00); //CHECKSUM
+    burst_data[19] = SPI.transfer(0x00);
+    digitalWrite(_CS, HIGH);
 
-	// Read Burst Data
-	burstdata[0] = SPI.transfer(0x00); //DIAG_STAT
-	burstdata[1] = SPI.transfer(0x00);
-	burstdata[2] = SPI.transfer(0x00); //XGYRO_OUT
-	burstdata[3] = SPI.transfer(0x00);
-	burstdata[4] = SPI.transfer(0x00); //YGYRO_OUT
-	burstdata[5] = SPI.transfer(0x00);
-	burstdata[6] = SPI.transfer(0x00); //ZGYRO_OUT
-	burstdata[7] = SPI.transfer(0x00);
-	burstdata[8] = SPI.transfer(0x00); //XACCEL_OUT
-	burstdata[9] = SPI.transfer(0x00);
-	burstdata[10] = SPI.transfer(0x00); //YACCEL_OUT
-	burstdata[11] = SPI.transfer(0x00);
-	burstdata[12] = SPI.transfer(0x00); //ZACCEL_OUT
-	burstdata[13] = SPI.transfer(0x00);
-	burstdata[14] = SPI.transfer(0x00); //TEMP_OUT
-	burstdata[15] = SPI.transfer(0x00);
-	burstdata[16] = SPI.transfer(0x00); //TIME_STMP
-	burstdata[17] = SPI.transfer(0x00);
-	burstdata[18] = SPI.transfer(0x00); //CHECKSUM
-	burstdata[19] = SPI.transfer(0x00);
-	digitalWrite(_CS, HIGH);
-
-  return burstdata;
-
+    return burst_data;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -205,49 +213,47 @@ uint8_t *ADIS16470::byteBurst(void) {
 ////////////////////////////////////////////////////////////////////////////
 // No inputs required.
 ////////////////////////////////////////////////////////////////////////////
-uint16_t *ADIS16470::wordBurst(void) {
+uint16_t *ADIS16470::word_burst(void) {
+    static uint16_t burst_words[10];
 
-  static uint16_t burstwords[10];
+    // Trigger Burst Read
+    digitalWrite(_CS, LOW);
+    SPI.transfer(0x68);
+    SPI.transfer(0x00);
 
-  // Trigger Burst Read
-  digitalWrite(_CS, LOW);
-  SPI.transfer(0x68);
-  SPI.transfer(0x00);
+    // Read Burst Data
+    burst_words[0] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //DIAG_STAT
+    burst_words[1] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //XGYRO
+    burst_words[2] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //YGYRO
+    burst_words[3] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //ZGYRO
+    burst_words[4] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //XACCEL
+    burst_words[5] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //YACCEL
+    burst_words[6] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //ZACCEL
+    burst_words[7] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //TEMP_OUT
+    burst_words[8] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //TIME_STMP
+    burst_words[9] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //CHECKSUM
 
-  // Read Burst Data
-  burstwords[0] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //DIAG_STAT
-  burstwords[1] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //XGYRO
-  burstwords[2] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //YGYRO
-  burstwords[3] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //ZGYRO
-  burstwords[4] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //XACCEL
-  burstwords[5] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //YACCEL
-  burstwords[6] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //ZACCEL
-  burstwords[7] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //TEMP_OUT
-  burstwords[8] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //TIME_STMP
-  burstwords[9] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //CHECKSUM
+    digitalWrite(_CS, HIGH);
 
-  digitalWrite(_CS, HIGH);
-
-  return burstwords;
-
+    return burst_words;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 // Calculates checksum based on burst data.
 // Returns the calculated checksum.
 ////////////////////////////////////////////////////////////////////////////
-// *burstArray - array of burst data
+// *burst_array - array of burst data
 // return - (int16_t) signed calculated checksum
 ////////////////////////////////////////////////////////////////////////////
-int16_t ADIS16470::checksum(uint16_t * burstArray) {
-	int16_t s = 0;
-	for (int i = 0; i < 9; i++) // Checksum value is not part of the sum!!
-	{
-	    s += (burstArray[i] & 0xFF); // Count lower byte
-      s += ((burstArray[i] >> 8) & 0xFF); // Count upper byte
-	}
+int16_t ADIS16470::checksum(uint16_t * burst_array) {
+    int16_t s = 0;
+    for (int i = 0; i < 9; i++) // Checksum value is not part of the sum!!
+    {
+        s += (burst_array[i] & 0xFF); // Count lower byte
+        s += ((burst_array[i] >> 8) & 0xFF); // Count upper byte
+    }
 
-	return s;
+    return s;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -256,10 +262,9 @@ int16_t ADIS16470::checksum(uint16_t * burstArray) {
 /////////////////////////////////////////////////////////////////////////////////////////
 // sensorData - data output from regRead()
 /////////////////////////////////////////////////////////////////////////////////////////
-float ADIS16470::accelScale(int16_t sensorData)
-{
-  float finalData = sensorData * 0.00125; // Multiply by accel sensitivity (0.00125g/LSB)
-  return finalData;
+float ADIS16470::accel_scale(int16_t sensor_data) {
+    float final_data = sensor_data * 0.00125; // Multiply by accel sensitivity (0.00125g/LSB)
+    return final_data;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -268,10 +273,9 @@ float ADIS16470::accelScale(int16_t sensorData)
 /////////////////////////////////////////////////////////////////////////////////////////////
 // sensorData - data output from regRead()
 /////////////////////////////////////////////////////////////////////////////////////////
-float ADIS16470::gyroScale(int16_t sensorData)
-{
-  float finalData = sensorData * 0.1; // Multiply by gyro sensitivity (0.1 deg/LSB)
-  return finalData;
+float ADIS16470::gyro_scale(int16_t sensor_data) {
+    float final_data = sensor_data * 0.1; // Multiply by gyro sensitivity (0.1 deg/LSB)
+    return final_data;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -280,10 +284,9 @@ float ADIS16470::gyroScale(int16_t sensorData)
 /////////////////////////////////////////////////////////////////////////////////////////////
 // sensorData - data output from regRead()
 /////////////////////////////////////////////////////////////////////////////////////////
-float ADIS16470::tempScale(int16_t sensorData)
-{
-  float finalData = (sensorData * 0.1); // Multiply by temperature scale (0.1 deg C/LSB)
-  return finalData;
+float ADIS16470::temp_scale(int16_t sensor_data) {
+    float final_data = (sensor_data * 0.1); // Multiply by temperature scale (0.1 deg C/LSB)
+    return final_data;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -292,10 +295,9 @@ float ADIS16470::tempScale(int16_t sensorData)
 /////////////////////////////////////////////////////////////////////////////////////////////
 // sensorData - data output from regRead()
 /////////////////////////////////////////////////////////////////////////////////////////
-float ADIS16470::deltaAngleScale(int16_t sensorData)
-{
-  float finalData = sensorData * 0.061; // Multiply by delta angle scale (0.061 degrees/LSB)
-  return finalData;
+float ADIS16470::delta_angle_scale(int16_t sensor_data) {
+    float final_data = sensor_data * 0.061; // Multiply by delta angle scale (0.061 degrees/LSB)
+    return final_data;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -304,8 +306,7 @@ float ADIS16470::deltaAngleScale(int16_t sensorData)
 /////////////////////////////////////////////////////////////////////////////////////////////
 // sensorData - data output from regRead()
 /////////////////////////////////////////////////////////////////////////////////////////
-float ADIS16470::deltaVelocityScale(int16_t sensorData)
-{
-  float finalData = sensorData * 0.01221; // Multiply by velocity scale (0.01221 m/sec/LSB)
-  return finalData;
+float ADIS16470::delta_velocity_scale(int16_t sensor_data) {
+    float final_data = sensor_data * 0.01221; // Multiply by velocity scale (0.01221 m/sec/LSB)
+    return final_data;
 }

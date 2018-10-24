@@ -133,8 +133,28 @@ class I2CDevice : public Device {
   inline void i2c_request_from(std::size_t len, i2c_stop s = I2C_STOP);
   /** \brief Request from a sublocation on a device. Will not generate a stop 
    * condition at the end of the request. See i2c_request_from.
-   *  \param subaddress Subaddress to read from I2C device. **/
+   *  \param subaddress Subaddress to read from I2C device.
+   *  \param len Number of bytes to request. **/
   inline void i2c_request_from_subaddr(uint8_t subaddr, std::size_t len);
+  /** \brief Read multiple bytes from a sublocation on a device.
+   *  \param subaddr Subaddress to read from I2C device.
+   *  \param dest Location to place the data.
+   *  \param len Number of bytes to read from I2C device. **/
+  inline void i2c_read_from_subaddr(uint8_t subaddr, uint8_t* dest, std::size_t len);
+  /** \brief Read one byte from a sublocation on a device.
+   *  \param subaddr Subaddress to read from I2C device.
+   *  \param dest Location to place the data.
+   *  \param len Number of bytes to read from I2C device. **/
+  inline uint8_t i2c_read_from_subaddr(uint8_t subaddr);
+  /** \brief Write multiple bytes to subaddress on I2C device.
+   *  \param subaddr Subaddress to read from I2C device.
+   *  \param data Data to be written to be device.
+   *  \param len Number of bytes to write to I2C device. **/
+  inline void i2c_write_to_subaddr(uint8_t subaddr, const uint8_t data[], std::size_t len);
+  /** \brief Write one byte to subaddress on I2C device.
+   *  \param subaddr Subaddress to read from I2C device.
+   *  \param data Byte to be written to device. **/
+  inline void i2c_write_to_subaddr(uint8_t subaddr, const uint8_t data);
   /** \brief See Wire.sendRequest in i2c_t3. Any error will be recorded in the
    *         recent error history variable. **/
   inline void i2c_send_request(std::size_t len, i2c_stop s = I2C_STOP);

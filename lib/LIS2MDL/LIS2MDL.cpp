@@ -19,24 +19,18 @@ LIS2MDL::LIS2MDL(i2c_t3 &i2c_wire, uint8_t i2c_addr, uint8_t int_pin) : I2CDevic
 }
 
 uint8_t LIS2MDL::get_chip_id() {
-    i2c_request_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_WHO_AM_I, 1);
-    uint8_t c = i2c_read();
-    i2c_finish();
-    return c;
+    return i2c_read_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_WHO_AM_I);
 }
 
 void LIS2MDL::reset() {
     // reset device
-    i2c_request_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A, 1);
-    uint8_t temp = i2c_read();
-    i2c_finish();
+    uint8_t temp = i2c_read_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A);
 
-    i2c_begin_transmission();
-    i2c_write(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A);
-    i2c_write(temp | 0x20); // Set bit 5 to 1 to reset LIS2MDL
+    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A, (temp | 0x20));
     delay(1);
+
+    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A, (temp | 0x40));
     i2c_write(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A);
-    i2c_write(temp | 0x40); // Set bit 5 to 1 to reset LIS2MDL
     delay(100); // Wait for all registers to reset 
     i2c_end_transmission();
 }
@@ -48,38 +42,23 @@ bool LIS2MDL::setup() {
 
 bool LIS2MDL::setup(uint8_t MODR) {
     // enable temperature compensation (bit 7 == 1), continuous mode (bits 0:1 == 00)
-    i2c_begin_transmission();
-    i2c_write(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A);
-    i2c_write(0x80 | MODR<<2);
-    i2c_end_transmission();
-
+    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A, (0x80 | MODR<<2));
     // enable low pass filter (bit 0 == 1), set to ODR/4
-    i2c_begin_transmission();
-    i2c_write(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_B);
-    i2c_write(0x01); // Set bit 5 to 1 to reset LIS2MDL
-    i2c_end_transmission();
-
+    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_B, 0x01);
     // enable data ready on interrupt pin (bit 0 == 1), enable block data read (bit 4 == 1)
-    i2c_begin_transmission();
-    i2c_write(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C);
-    i2c_write(0x01 | 0x10);
-    i2c_end_transmission();
+    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C, (0x01 | 0x10));
 
     return true;
 }
 
 bool LIS2MDL::i2c_ping() {
     // Read the status register of the altimeter  
-    i2c_request_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_STATUS_REG, 1);
-    uint8_t temp = i2c_read();
-    i2c_finish();
-    return temp;
+    return i2c_read_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_STATUS_REG);
 }
 
 void LIS2MDL::read_data(int16_t * destination) {
     uint8_t raw_data[6];  // x/y/z mag register data stored here
-    i2c_request_from_subaddr((0x80 | REGISTER_ADDRESSES::LIS2MDL_OUTX_L_REG), 8);
-    i2c_receive_data(raw_data, 6, I2C_STOP);
+    i2c_read_from_subaddr((0x80 | REGISTER_ADDRESSES::LIS2MDL_OUTX_L_REG), raw_data, 6);
 
     // Turn the MSB and LSB into a signed 16-bit value
     destination[0] = ((int16_t)raw_data[1] << 8) | raw_data[0] ;
@@ -89,8 +68,7 @@ void LIS2MDL::read_data(int16_t * destination) {
 
 int16_t LIS2MDL::read_temperature() {
   uint8_t raw_data[2];  // x/y/z mag register data stored here
-  i2c_request_from_subaddr((0x80 | REGISTER_ADDRESSES::LIS2MDL_TEMP_OUT_L_REG), 2);
-  i2c_receive_data(raw_data, 2, I2C_STOP);
+  i2c_read_from_subaddr((0x80 | REGISTER_ADDRESSES::LIS2MDL_TEMP_OUT_L_REG), raw_data, 2);
 
   int16_t temp = ((int16_t)raw_data[1] << 8) | raw_data[0] ;       // Turn the MSB and LSB into a signed 16-bit value
   return temp;
@@ -157,14 +135,9 @@ void LIS2MDL::single_comp_test() {
     magNom[1] = (float) sum[1] / 50.0f;
     magNom[2] = (float) sum[2] / 50.0f;
     
-    i2c_request_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C, 1);
-    uint8_t c = i2c_read();
-    i2c_finish();
+    uint8_t c = i2c_read_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C);
 
-    i2c_begin_transmission();
-    i2c_write(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C);
-    i2c_write(c | 0x02);
-    i2c_end_transmission();
+    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C, (c | 0x02));
     delay(100); // let mag respond
     
     sum[0] = 0;
@@ -182,10 +155,7 @@ void LIS2MDL::single_comp_test() {
     magTest[1] = (float) sum[1] / 50.0f;
     magTest[2] = (float) sum[2] / 50.0f;
     
-    i2c_begin_transmission();
-    i2c_write(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C);
-    i2c_write(c);
-    i2c_end_transmission(); // return to previous settings/normal mode
+    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C, c);
     delay(100); // let mag respond
 
     Serial.println("Mag Self Test:");

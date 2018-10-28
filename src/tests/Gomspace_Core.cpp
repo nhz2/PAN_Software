@@ -5,11 +5,11 @@ using namespace Devices;
 
 #define HK_READ_TESTING
 
-Gomspace gs(Wire1, Gomspace::ADDRESS);
+Gomspace gs(Wire, Gomspace::ADDRESS);
 bool setup_result;
 
 void setup() {
-    Wire1.begin(I2C_MASTER, 0x00, I2C_PINS_37_38, I2C_PULLUP_EXT, 400000, I2C_OP_MODE_ISR);
+    Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_EXT, 400000, I2C_OP_MODE_ISR);
     Serial.begin(9600);
     delay(100);
     setup_result = gs.setup();

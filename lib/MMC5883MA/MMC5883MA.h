@@ -33,9 +33,9 @@ class MMC5883MA : public I2CDevice {
             MMC5883MA_PRODUCT_ID = 0x2F,
         };
 
-        static const uint8_t MMC5883MA_ADDR = 0x60;
-        static const uint8_t MMC5883MA_DYNAMIC_RANGE = 16;
-        static const uint32_t MMC5883MA_RESOLUTION = 65536;
+        static constexpr uint8_t MMC5883MA_ADDR = 0x60;
+        static constexpr uint8_t MMC5883MA_DYNAMIC_RANGE = 16;
+        static constexpr uint32_t MMC5883MA_RESOLUTION = 65536;
 
         MMC5883MA(i2c_t3 &i2c_wire, uint8_t i2c_addr);
         void get_mag(magnetic_field_t* mag_field);

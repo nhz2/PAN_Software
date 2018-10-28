@@ -50,7 +50,7 @@ class LIS2MDL : public I2CDevice {
       MODR_50Hz = 0x02,
       MODR_100Hz = 0x03
     };
-    static const uint8_t LIS2MDL_ADDRESS = 0x1E;
+    static constexpr uint8_t LIS2MDL_ADDRESS = 0x1E;
 
     LIS2MDL(i2c_t3 &i2c_wire, uint8_t i2c_addr, uint8_t int_pin);
 

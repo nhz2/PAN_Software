@@ -9,14 +9,8 @@ SpikeAndHold::SpikeAndHold(const uint8_t pins[NUM_VALVES]) {
     for (uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) {
         valve_pins[i] = pins[i];
     }
-    cursch.items = (FiringScheduleItem*) malloc(MAX_SCHEDULE_ITEMS * sizeof(FiringScheduleItem));
-    ms_till_done = 0;
-}
-
-SpikeAndHold::SpikeAndHold(const uint8_t pins[SpikeAndHold::NUM_VALVES]) {
-    for (uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) {
-        valve_pins[i] = pins[i];
-    }
+    cursch = (FiringScheduleItem*) malloc(MAX_SCHEDULE_ITEMS * sizeof(FiringScheduleItem));
+    sch_length = 0;
 }
 
 bool SpikeAndHold::execute_schedule() {
@@ -27,11 +21,7 @@ bool SpikeAndHold::execute_schedule() {
     start_time = millis();
 
     for(uint8_t i = 0; i < num_items_sch && sch_running; i++) {
-        
-        uint8_t valve_gpio_pin = valve_pins[cursch[i].valve];
-        uint8_t old_valve_state = valve_status[cursch[i].valve];
-        uint8_t new_valve_state = cursch[i].state;
-        digitalWrite(valve_gpio_pin, new_valve_state);
+        digitalWrite(valve_pins[cursch[i].valve], cursch[i].state);
 
         uint32_t dt;
         if (i + 1 != num_items_sch) dt = cursch[i + 1].time - cursch[i].time;

@@ -8,7 +8,7 @@
 namespace Devices {
 class Gomspace : public I2CDevice {
   public:
-    static const uint8_t ADDRESS = 0x02; /**< I2C address of Gomspace device **/
+    static constexpr uint8_t ADDRESS = 0x02; /**< I2C address of Gomspace device **/
 
     /**< "Housekeeping" data struct; contains Gomspace state information. */
     struct __attribute__((packed)) eps_hk_t {

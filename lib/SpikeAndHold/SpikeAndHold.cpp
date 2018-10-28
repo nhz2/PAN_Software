@@ -5,11 +5,12 @@
 
 using namespace Devices;
 
-SpikeAndHold::SpikeAndHold() {
-    uint8_t PIN_VALUES[6] = {3, 4, 5, 6, 9, 10};
+SpikeAndHold::SpikeAndHold(const uint8_t pins[NUM_VALVES]) {
     for (uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) {
-        valve_pins[i] = PIN_VALUES[i];
+        valve_pins[i] = pins[i];
     }
+    cursch.items = (FiringScheduleItem*) malloc(MAX_SCHEDULE_ITEMS * sizeof(FiringScheduleItem));
+    ms_till_done = 0;
 }
 
 SpikeAndHold::SpikeAndHold(const uint8_t pins[SpikeAndHold::NUM_VALVES]) {
@@ -18,95 +19,54 @@ SpikeAndHold::SpikeAndHold(const uint8_t pins[SpikeAndHold::NUM_VALVES]) {
     }
 }
 
-bool SpikeAndHold::fire_thrusters(const SpikeAndHold::FiringSchedule &schedule) {
-    if (!_schedule_is_correct(schedule)) return false;
-    bool done = false;
+bool SpikeAndHold::execute_schedule() {
+    _fix_schedule();
 
-    uint32_t **o = schedule.openings;
-    uint32_t **c = schedule.closings;
-    uint8_t o_size = sizeof(o) / sizeof(uint32_t);
-    uint8_t c_size = sizeof(c) / sizeof(uint32_t);
-    uint32_t **o_ptr = o; // Pointer to next valve to open
-    uint32_t **c_ptr = c; // Pointer to next valve to close
-    uint32_t start_time = micros();
+    sch_running = true;
+    sch_length = cursch[num_items_sch - 1].time;
+    start_time = millis();
 
-    while(!done) {
-        bool done_openings = false;
-        bool done_closings = false;
-        uint32_t it_time = micros() - start_time;
+    for(uint8_t i = 0; i < num_items_sch && sch_running; i++) {
+        
+        uint8_t valve_gpio_pin = valve_pins[cursch[i].valve];
+        uint8_t old_valve_state = valve_status[cursch[i].valve];
+        uint8_t new_valve_state = cursch[i].state;
+        digitalWrite(valve_gpio_pin, new_valve_state);
 
-        if (done_openings && done_closings) {
-            done = true;
-        }
-        else if (!done_openings) {
-            // Open all valves that should be opened at this time.
-            if (o_ptr != &o[o_size - 1]) {
-                uint32_t next_opening_time = (*o_ptr)[0];
-                uint8_t next_opening_valve = valve_pins[(*o_ptr)[1]];
-                if (next_opening_time * 1000 - it_time >= 0) {
-                    digitalWrite(next_opening_valve, HIGH);
-                    o_ptr++;
-                }
-            }
-            else {
-                done_openings = true;
-            }
-        }
-        else if (!done_closings) {
-            // Close all valves that should be closed at this time.
-            if (c_ptr != &c[c_size - 1]) {
-                uint32_t next_closing_time = (*o_ptr)[0];
-                uint8_t next_closing_valve = valve_pins[(*o_ptr)[1]];
-                if (next_closing_time * 1000 - it_time >= 0) {
-                    digitalWrite(next_closing_valve, LOW);
-                    o_ptr++;
-                }
-            }
-            else {
-                done_closings = true;
-            }
-        }
-    }    
+        uint32_t dt;
+        if (i + 1 != num_items_sch) dt = cursch[i + 1].time - cursch[i].time;
+        else dt = 0;
+        delay(dt);
+    }
+    // Turn all valves off in case schedule forgot to do this somehow
+    shut_all_valves();
+
+    sch_running = false;
+    sch_length = 0;
+    num_items_sch = 0;
+    start_time = 0;
+
     return true;
 }
 
-bool SpikeAndHold::_schedule_is_correct(const SpikeAndHold::FiringSchedule &schedule) {
-    uint32_t **openings = schedule.openings;
-    uint32_t **closings =schedule.closings;
-    uint8_t o_size = sizeof(openings) / sizeof(uint32_t);
-    uint8_t c_size = sizeof(closings) / sizeof(uint32_t);
-    if (o_size != c_size) return false;
-
-    //// Ensure both lists are ordered, and that all valves that would be opened are valid
-    // Ensure openings are ordered and are valid valves
-    for(uint8_t i = 1; i < o_size; i++) {
-        if (openings[i][0] <= openings[i - 1][0]) return false;
-        if (openings[i][1] >= SpikeAndHold::NUM_VALVES) return false;
+void SpikeAndHold::shut_all_valves() {
+    for(uint8_t i = 0; i < NUM_VALVES; i++) { 
+        digitalWrite(valve_pins[i], LOW);
     }
-    // Ensure closings are ordered and are valid valves
-    for(uint8_t i = 1; i < c_size; i++) {
-        if (closings[i][0] <= closings[i - 1][0]) return false;
-        if (closings[i][1] >= SpikeAndHold::NUM_VALVES) return false;
+}
+
+void SpikeAndHold::_fix_schedule() {
+    for(uint8_t i = 0; i < num_items_sch - 1; i++) {
+        uint32_t dt = cursch[i + 1].time - cursch[i].time;
+        if (dt < 2) {
+            for(uint8_t j = i + 1; j < num_items_sch; j++) cursch[j].time += (2 - dt);
+        }
     }
+}
 
-    //// Ensure # of openings per valve = # of closings per valve
-    uint8_t num_openings[SpikeAndHold::NUM_VALVES]; // Number of times valve i is opened
-    uint8_t num_closings[SpikeAndHold::NUM_VALVES]; // Number of times valve i is opened
-    // Get numbers of openings and closings per valve
-    for(uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) { num_openings[i] = 0; num_closings[i] = 0; }
-    for(uint8_t i = 0; i < o_size; i++) { num_openings[openings[i][1]]++; }
-    for(uint8_t i = 0; i < c_size; i++) { num_closings[closings[i][1]]++; }
-    // Ensure # of openings per valve = # of closings per valve
-    for(uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) { if (num_openings[i] != num_closings[i]) return false; }
-
-    // TODO Ensure valve that is opened isn't opened again before being closed
-    // TODO Ensure valve that is closed isn't closed again before being opened
-
-    //// Ensure last openings and closings are not beyond the micros() range.
-    uint32_t last_opening = openings[o_size - 1][1];
-    uint32_t last_closing = closings[c_size - 1][1];
-    if (last_opening > ULONG_MAX / 1000) return false;
-    if (last_closing > ULONG_MAX / 1000) return false;
-
-    return true;
+bool SpikeAndHold::schedule_is_running() { return sch_running; }
+void SpikeAndHold::abort_schedule() { sch_running = false; }
+uint32_t SpikeAndHold::time_until_execution() { 
+    if (!sch_running) return 0;
+    else return sch_length - (millis() - start_time); 
 }

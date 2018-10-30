@@ -19,7 +19,7 @@
  *  conversion delay for all sample rates. Varaible sample rates and gain values
  *  are supported.
  */
-class ADS1015 : public I2CDevice {
+class ADS1015 : public Devices::I2CDevice {
  public:
   /*! Possible i2c addresses intended to be passed to the ADS1115 constructor */
   enum ADDR { GND = 0x48, VDD = 0x49, SDA = 0x4A, SCL = 0x4B };

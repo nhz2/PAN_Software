@@ -23,6 +23,10 @@ bool ADS1015::i2c_ping() {
   return false;
 }
 
+/** \brief Sample rate delays in milliseconds. **/
+static unsigned long const sample_rates[] = {128,  250,  490, 920,
+                                             1600, 2400, 3300};
+
 ADS1015::ADS1015(i2c_t3 &wire, ADS1015_ADDR addr, unsigned int alert_pin,
                  unsigned long timeout)
     : I2CDevice(wire, addr, timeout), alert_pin(alert_pin) {
@@ -30,7 +34,8 @@ ADS1015::ADS1015(i2c_t3 &wire, ADS1015_ADDR addr, unsigned int alert_pin,
 }
 
 void ADS1015::set_sample_rate(ADS1015_SR sample_rate) {
-  // TODO
+  this->sample_delay = (1000 / sample_rates[sample_rate >> 5]) + 1;
+  this->sample_rate = sample_rate;
 }
 
 void ADS1015::start_read(unsigned int channel) {

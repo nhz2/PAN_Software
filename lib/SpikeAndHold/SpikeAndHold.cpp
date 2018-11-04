@@ -1,62 +1,87 @@
 #include "Arduino.h"
 #include <climits>
+#include <vector>
+#include <tuple>
 #include "../Devices/Device.hpp"
 #include "SpikeAndHold.hpp"
 
 using namespace Devices;
 
+// Define static variables so that C++ doesn't complain;
+uint8_t SpikeAndHold::DEFAULT_VALVE_PINS[6] = {3,4,6,9,10};
+uint8_t SpikeAndHold::valve_pins[SpikeAndHold::NUM_VALVES];
+SpikeAndHold::VALVE_STATE SpikeAndHold::valve_states[SpikeAndHold::NUM_VALVES];
+uint32_t SpikeAndHold::cursch[4];
+bool SpikeAndHold::sch_running;
+bool SpikeAndHold::sch_loaded;
+
 SpikeAndHold::SpikeAndHold(const uint8_t pins[NUM_VALVES]) {
-    for (uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) {
-        valve_pins[i] = pins[i];
-    }
-    cursch = (FiringScheduleItem*) malloc(MAX_SCHEDULE_ITEMS * sizeof(FiringScheduleItem));
-    sch_length = 0;
+    for (uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) valve_pins[i] = pins[i];
+    sch_running = false;
+    sch_loaded = false;
 }
 
-bool SpikeAndHold::execute_schedule() {
-    _fix_schedule();
+bool SpikeAndHold::setup() { return true; } // There's nothing to set up!
+bool SpikeAndHold::is_functional() { return true; } // Not really any way to check if GPIO is functional or not.
+void SpikeAndHold::disable() { shut_all_valves(); }
+void SpikeAndHold::reset() { shut_all_valves(); }
+void SpikeAndHold::single_comp_test() { 
+    // TODO
+}
 
+void SpikeAndHold::pressurize_tank(VALVE_IDS tank_valve) {
+    digitalWrite(valve_pins[tank_valve], OPEN);
+    delay(100);
+    digitalWrite(valve_pins[tank_valve], CLOSED);
+}
+
+void SpikeAndHold::load_schedule(const uint32_t sch[4]) {
+    memcpy(cursch, sch, 4*sizeof(uint32_t));
+}
+
+void SpikeAndHold::execute_schedule() {
+    if (!sch_loaded) return;
     sch_running = true;
-    sch_length = cursch[num_items_sch - 1].time;
-    start_time = millis();
 
-    for(uint8_t i = 0; i < num_items_sch && sch_running; i++) {
-        digitalWrite(valve_pins[cursch[i].valve], cursch[i].state);
-
-        uint32_t dt;
-        if (i + 1 != num_items_sch) dt = cursch[i + 1].time - cursch[i].time;
-        else dt = 0;
-        delay(dt);
+    // Create 2 ms gap between valve openings, and open the ones that should be opened.
+    for (uint8_t i = 0; i < 4 && sch_running; i++) {
+        if (cursch[i] != 0) {
+            digitalWrite(valve_pins[i], OPEN);
+            delay(2);
+        }
     }
-    // Turn all valves off in case schedule forgot to do this somehow
+    
+    // Order valves by firing length.
+    std::vector<std::pair<uint32_t, uint8_t>> valve_firings;
+    for(uint8_t i = 0; i < 4; i++) valve_firings.emplace_back(cursch[i], i);
+    sort(valve_firings.begin(), valve_firings.end());
+
+    // Convert delays to differences in delays
+    for(uint8_t i = 1; i < 4; i++) {
+        valve_firings.at(i).first = valve_firings.at(i - 1).first - valve_firings.at(i).first;
+    }
+    // Wait the appropriate amount between firings, and then close the appropriate valve.
+    for(uint8_t i = 0; i < 4 && sch_running; i++) {
+        auto x = valve_firings.at(i);
+        delay(x.first);
+        digitalWrite(x.second, CLOSED);
+    }
+
+    // Just to be extra sure that all valves end up being closed, close them off.
     shut_all_valves();
-
+    sch_loaded = false;
     sch_running = false;
-    sch_length = 0;
-    num_items_sch = 0;
-    start_time = 0;
-
-    return true;
 }
 
 void SpikeAndHold::shut_all_valves() {
-    for(uint8_t i = 0; i < NUM_VALVES; i++) { 
-        digitalWrite(valve_pins[i], LOW);
-    }
+    for(uint8_t i = 0; i < NUM_VALVES; i++) digitalWrite(valve_pins[i], CLOSED);
 }
 
-void SpikeAndHold::_fix_schedule() {
-    for(uint8_t i = 0; i < num_items_sch - 1; i++) {
-        uint32_t dt = cursch[i + 1].time - cursch[i].time;
-        if (dt < 2) {
-            for(uint8_t j = i + 1; j < num_items_sch; j++) cursch[j].time += (2 - dt);
-        }
-    }
-}
-
+bool SpikeAndHold::schedule_is_loaded() { return sch_loaded; }
 bool SpikeAndHold::schedule_is_running() { return sch_running; }
 void SpikeAndHold::abort_schedule() { sch_running = false; }
-uint32_t SpikeAndHold::time_until_execution() { 
-    if (!sch_running) return 0;
-    else return sch_length - (millis() - start_time); 
+uint32_t SpikeAndHold::time_until_execution() {
+    return (uint32_t) std::max_element(cursch, cursch+4);
 }
+
+SpikeAndHold::VALVE_STATE SpikeAndHold::valve_status(VALVE_IDS valve) { return valve_states[valve]; }

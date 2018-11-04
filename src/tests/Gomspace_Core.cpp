@@ -9,11 +9,10 @@ Gomspace gs(Wire, Gomspace::ADDRESS);
 bool setup_result;
 
 void setup() {
-    Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_EXT, 400000, I2C_OP_MODE_ISR);
     Serial.begin(9600);
+    Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, 400000, I2C_OP_MODE_ISR);
     delay(100);
     setup_result = gs.setup();
-    Serial.println("Successfully set up Gomspace.");
 }
 
 void loop() {
@@ -41,5 +40,5 @@ void loop() {
     else {
         Serial.println("Failed to fetch housekeeping data.");
     }
-    delay(4000);
+    delay(1000);
 }

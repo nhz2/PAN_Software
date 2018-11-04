@@ -2,6 +2,7 @@
 #include <climits>
 #include <vector>
 #include <tuple>
+#include <algorithm>
 #include "../Devices/Device.hpp"
 #include "SpikeAndHold.hpp"
 
@@ -49,7 +50,7 @@ void SpikeAndHold::execute_schedule() {
     // Create 2 ms gap between valve openings, and open the ones that should be opened.
     for (uint8_t i = 0; i < 4 && sch_running; i++) {
         if (cursch[i] != 0) {
-            digitalWrite(valve_pins[i], OPEN);
+            digitalWrite(valve_pins[i + 2], OPEN);
             delay(2);
         }
     }
@@ -68,7 +69,7 @@ void SpikeAndHold::execute_schedule() {
         auto x = valve_firings.at(i);
         delay(x.first);
         if (x.first != 0) delay(2);
-        digitalWrite(x.second, CLOSED);
+        digitalWrite(valve_pins[x.second + 2], CLOSED);
     }
 
     // Just to be extra sure that all valves end up being closed, close them off.

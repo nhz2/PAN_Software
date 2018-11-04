@@ -9,7 +9,7 @@
 using namespace Devices;
 
 // Define static variables so that C++ doesn't complain;
-uint8_t SpikeAndHold::DEFAULT_VALVE_PINS[6] = {3,4,6,9,10};
+uint8_t SpikeAndHold::DEFAULT_VALVE_PINS[6] = {3,4,5,6,27,28};
 uint8_t SpikeAndHold::valve_pins[SpikeAndHold::NUM_VALVES];
 SpikeAndHold::VALVE_STATE SpikeAndHold::valve_states[SpikeAndHold::NUM_VALVES];
 uint32_t SpikeAndHold::cursch[4];

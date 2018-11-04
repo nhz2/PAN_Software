@@ -16,7 +16,10 @@ bool SpikeAndHold::sch_running;
 bool SpikeAndHold::sch_loaded;
 
 SpikeAndHold::SpikeAndHold(const uint8_t pins[NUM_VALVES]) {
-    for (uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) valve_pins[i] = pins[i];
+    for (uint8_t i = 0; i < SpikeAndHold::NUM_VALVES; i++) {
+        valve_pins[i] = pins[i];
+        pinMode(valve_pins[i], OUTPUT);
+    }
     sch_running = false;
     sch_loaded = false;
 }
@@ -64,6 +67,7 @@ void SpikeAndHold::execute_schedule() {
     for(uint8_t i = 0; i < 4 && sch_running; i++) {
         auto x = valve_firings.at(i);
         delay(x.first);
+        if (x.first != 0) delay(2);
         digitalWrite(x.second, CLOSED);
     }
 

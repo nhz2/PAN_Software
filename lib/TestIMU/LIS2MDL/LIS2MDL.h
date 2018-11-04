@@ -52,7 +52,7 @@ class LIS2MDL : public I2CDevice {
     };
     static constexpr uint8_t LIS2MDL_ADDRESS = 0x1E;
 
-    LIS2MDL(i2c_t3 &i2c_wire, uint8_t i2c_addr, uint8_t int_pin);
+    LIS2MDL(i2c_t3 &i2c_wire, uint8_t int_pin = 0, uint8_t i2c_addr = LIS2MDL_ADDRESS);
 
     // Device functions
     bool setup() override;

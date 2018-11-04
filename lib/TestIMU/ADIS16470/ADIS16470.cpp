@@ -32,6 +32,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "ADIS16470.h"
+#include <SPI.h>
 
 using namespace Devices;
 
@@ -42,23 +43,18 @@ using namespace Devices;
 // DR - DR output pin for data ready
 // RST - Hardware reset pin
 ////////////////////////////////////////////////////////////////////////////
-ADIS16470::ADIS16470(uint8_t CS, uint8_t DR, uint8_t RST) {
-    _CS = CS;
-    _DR = DR;
-    _RST = RST;
-    // Initialize SPI
-    SPI.begin();
-    // Configure SPI controller
+ADIS16470::ADIS16470(uint8_t CS, uint8_t DR, uint8_t RST, SPIClass &spi) : _CS(CS), _DR(DR), _RST(RST), _spi(spi) { }
+
+bool ADIS16470::setup() { 
+    _spi.begin();
     config_SPI();
-    // Set default pin states
     pinMode(_CS, OUTPUT); // Set CS pin to be an output
     pinMode(_DR, INPUT); // Set DR pin to be an input
     pinMode(_RST, OUTPUT); // Set RST pin to be an output
     digitalWrite(_CS, HIGH); // Initialize CS pin to be high
     digitalWrite(_RST, HIGH); // Initialize RST pin to be high
+    return config_SPI(); 
 }
-
-bool ADIS16470::setup() { return config_SPI(); }
 void ADIS16470::reset() { reset_DUT(5); }
 void ADIS16470::disable() { /** TODO **/ }
 bool ADIS16470::is_functional() {
@@ -71,7 +67,7 @@ void ADIS16470::single_comp_test() { /** TODO **/ }
 ////////////////////////////////////////////////////////////////////////////
 ADIS16470::~ADIS16470() {
     // Close SPI bus
-    SPI.end();
+    _spi.end();
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -93,7 +89,7 @@ bool ADIS16470::reset_DUT(uint8_t ms) {
 ////////////////////////////////////////////////////////////////////////////
 bool ADIS16470::config_SPI() {
     SPISettings IMUSettings(1000000, MSBFIRST, SPI_MODE3);
-    SPI.beginTransaction(IMUSettings);
+    _spi.beginTransaction(IMUSettings);
     return true;
 }
 
@@ -108,16 +104,16 @@ int16_t ADIS16470::reg_read(uint8_t reg_addr) {
   
     // Write register address to be read
     digitalWrite(_CS, LOW); // Set CS low to enable device
-    SPI.transfer(reg_addr); // Write address over SPI bus
-    SPI.transfer(0x00); // Write 0x00 to the SPI bus fill the 16 bit transaction requirement
+    _spi.transfer(reg_addr); // Write address over SPI bus
+    _spi.transfer(0x00); // Write 0x00 to the SPI bus fill the 16 bit transaction requirement
     digitalWrite(_CS, HIGH); // Set CS high to disable device
 
     delayMicroseconds(_stall); // Delay to not violate read rate 
 
     // Read data from requested register
     digitalWrite(_CS, LOW); // Set CS low to enable device
-    uint8_t _msb_data = SPI.transfer(0x00); // Send (0x00) and place upper byte into variable
-    uint8_t _lsb_data = SPI.transfer(0x00); // Send (0x00) and place lower byte into variable
+    uint8_t _msb_data = _spi.transfer(0x00); // Send (0x00) and place upper byte into variable
+    uint8_t _lsb_data = _spi.transfer(0x00); // Send (0x00) and place lower byte into variable
     digitalWrite(_CS, HIGH); // Set CS high to disable device
 
     delayMicroseconds(_stall); // Delay to not violate read rate 
@@ -129,7 +125,7 @@ int16_t ADIS16470::reg_read(uint8_t reg_addr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////
-// Writes one byte of data to the specified register over SPI.
+// Writes one byte of data to the specified register over _spi.
 // Returns 1 when complete.
 ////////////////////////////////////////////////////////////////////////////
 // regAddr - address of register to be written
@@ -150,16 +146,16 @@ bool ADIS16470::reg_write(uint8_t reg_addr, int16_t reg_data) {
 
     // Write high_word to SPI bus
     digitalWrite(_CS, LOW); // Set CS low to enable device
-    SPI.transfer(high_byte_low_word); // Write high byte from low word to SPI bus
-    SPI.transfer(low_byte_low_word); // Write low byte from low word to SPI bus
+    _spi.transfer(high_byte_low_word); // Write high byte from low word to SPI bus
+    _spi.transfer(low_byte_low_word); // Write low byte from low word to SPI bus
     digitalWrite(_CS, HIGH); // Set CS high to disable device
 
     delayMicroseconds(_stall);; // Delay to not violate read rate 
 
     // Write low_word to SPI bus
     digitalWrite(_CS, LOW); // Set CS low to enable device
-    SPI.transfer(high_byte_high_word); // Write high byte from high word to SPI bus
-    SPI.transfer(low_byte_high_word); // Write low byte from high word to SPI bus
+    _spi.transfer(high_byte_high_word); // Write high byte from high word to SPI bus
+    _spi.transfer(low_byte_high_word); // Write low byte from high word to SPI bus
     digitalWrite(_CS, HIGH); // Set CS high to disable device
 
     delayMicroseconds(_stall);; // Delay to not violate read rate 
@@ -178,30 +174,30 @@ uint8_t *ADIS16470::byte_burst(void) {
 
     // Trigger Burst Read
     digitalWrite(_CS, LOW);
-    SPI.transfer(0x68);
-    SPI.transfer(0x00);
+    _spi.transfer(0x68);
+    _spi.transfer(0x00);
 
     // Read Burst Data
-    burst_data[0] = SPI.transfer(0x00); //DIAG_STAT
-    burst_data[1] = SPI.transfer(0x00);
-    burst_data[2] = SPI.transfer(0x00); //XGYRO_OUT
-    burst_data[3] = SPI.transfer(0x00);
-    burst_data[4] = SPI.transfer(0x00); //YGYRO_OUT
-    burst_data[5] = SPI.transfer(0x00);
-    burst_data[6] = SPI.transfer(0x00); //ZGYRO_OUT
-    burst_data[7] = SPI.transfer(0x00);
-    burst_data[8] = SPI.transfer(0x00); //XACCEL_OUT
-    burst_data[9] = SPI.transfer(0x00);
-    burst_data[10] = SPI.transfer(0x00); //YACCEL_OUT
-    burst_data[11] = SPI.transfer(0x00);
-    burst_data[12] = SPI.transfer(0x00); //ZACCEL_OUT
-    burst_data[13] = SPI.transfer(0x00);
-    burst_data[14] = SPI.transfer(0x00); //TEMP_OUT
-    burst_data[15] = SPI.transfer(0x00);
-    burst_data[16] = SPI.transfer(0x00); //TIME_STMP
-    burst_data[17] = SPI.transfer(0x00);
-    burst_data[18] = SPI.transfer(0x00); //CHECKSUM
-    burst_data[19] = SPI.transfer(0x00);
+    burst_data[0] = _spi.transfer(0x00); //DIAG_STAT
+    burst_data[1] = _spi.transfer(0x00);
+    burst_data[2] = _spi.transfer(0x00); //XGYRO_OUT
+    burst_data[3] = _spi.transfer(0x00);
+    burst_data[4] = _spi.transfer(0x00); //YGYRO_OUT
+    burst_data[5] = _spi.transfer(0x00);
+    burst_data[6] = _spi.transfer(0x00); //ZGYRO_OUT
+    burst_data[7] = _spi.transfer(0x00);
+    burst_data[8] = _spi.transfer(0x00); //XACCEL_OUT
+    burst_data[9] = _spi.transfer(0x00);
+    burst_data[10] = _spi.transfer(0x00); //YACCEL_OUT
+    burst_data[11] = _spi.transfer(0x00);
+    burst_data[12] = _spi.transfer(0x00); //ZACCEL_OUT
+    burst_data[13] = _spi.transfer(0x00);
+    burst_data[14] = _spi.transfer(0x00); //TEMP_OUT
+    burst_data[15] = _spi.transfer(0x00);
+    burst_data[16] = _spi.transfer(0x00); //TIME_STMP
+    burst_data[17] = _spi.transfer(0x00);
+    burst_data[18] = _spi.transfer(0x00); //CHECKSUM
+    burst_data[19] = _spi.transfer(0x00);
     digitalWrite(_CS, HIGH);
 
     return burst_data;
@@ -218,20 +214,20 @@ uint16_t *ADIS16470::word_burst(void) {
 
     // Trigger Burst Read
     digitalWrite(_CS, LOW);
-    SPI.transfer(0x68);
-    SPI.transfer(0x00);
+    _spi.transfer(0x68);
+    _spi.transfer(0x00);
 
     // Read Burst Data
-    burst_words[0] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //DIAG_STAT
-    burst_words[1] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //XGYRO
-    burst_words[2] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //YGYRO
-    burst_words[3] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //ZGYRO
-    burst_words[4] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //XACCEL
-    burst_words[5] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //YACCEL
-    burst_words[6] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //ZACCEL
-    burst_words[7] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //TEMP_OUT
-    burst_words[8] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //TIME_STMP
-    burst_words[9] = ((SPI.transfer(0x00) << 8) | (SPI.transfer(0x00) & 0xFF)); //CHECKSUM
+    burst_words[0] = ((_spi.transfer(0x00) << 8) | (_spi.transfer(0x00) & 0xFF)); //DIAG_STAT
+    burst_words[1] = ((_spi.transfer(0x00) << 8) | (_spi.transfer(0x00) & 0xFF)); //XGYRO
+    burst_words[2] = ((_spi.transfer(0x00) << 8) | (_spi.transfer(0x00) & 0xFF)); //YGYRO
+    burst_words[3] = ((_spi.transfer(0x00) << 8) | (_spi.transfer(0x00) & 0xFF)); //ZGYRO
+    burst_words[4] = ((_spi.transfer(0x00) << 8) | (_spi.transfer(0x00) & 0xFF)); //XACCEL
+    burst_words[5] = ((_spi.transfer(0x00) << 8) | (_spi.transfer(0x00) & 0xFF)); //YACCEL
+    burst_words[6] = ((_spi.transfer(0x00) << 8) | (_spi.transfer(0x00) & 0xFF)); //ZACCEL
+    burst_words[7] = ((_spi.transfer(0x00) << 8) | (_spi.transfer(0x00) & 0xFF)); //TEMP_OUT
+    burst_words[8] = ((_spi.transfer(0x00) << 8) | (_spi.transfer(0x00) & 0xFF)); //TIME_STMP
+    burst_words[9] = ((_spi.transfer(0x00) << 8) | (_spi.transfer(0x00) & 0xFF)); //CHECKSUM
 
     digitalWrite(_CS, HIGH);
 

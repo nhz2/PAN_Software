@@ -13,7 +13,7 @@
 
 using namespace Devices;
 
-LIS2MDL::LIS2MDL(i2c_t3 &i2c_wire, uint8_t i2c_addr, uint8_t int_pin) : I2CDevice(i2c_wire, i2c_addr, 0) {
+LIS2MDL::LIS2MDL(i2c_t3 &i2c_wire, uint8_t int_pin, uint8_t i2c_addr) : I2CDevice(i2c_wire, i2c_addr, 0) {
     pinMode(int_pin, INPUT);
     _int_pin = int_pin;
 }
@@ -160,8 +160,8 @@ void LIS2MDL::single_comp_test() {
 
     Serial.println("Mag Self Test:");
     Serial.print("Mx results:"); Serial.print(  (magTest[0] - magNom[0]) * _mRes * 1000.0); Serial.println(" mG");
-    Serial.print("My results:"); Serial.println((magTest[0] - magNom[0]) * _mRes * 1000.0);
-    Serial.print("Mz results:"); Serial.println((magTest[1] - magNom[1]) * _mRes * 1000.0);
+    Serial.print("My results:"); Serial.println((magTest[1] - magNom[1]) * _mRes * 1000.0); Serial.println(" mG");
+    Serial.print("Mz results:"); Serial.println((magTest[2] - magNom[2]) * _mRes * 1000.0); Serial.println(" mG");
     Serial.println("Should be between 15 and 500 mG");
     delay(2000);  // give some time to read the screen
 }

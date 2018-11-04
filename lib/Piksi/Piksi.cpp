@@ -31,6 +31,8 @@ sbp_msg_callbacks_node_t Piksi::_user_data_callback_node;
 Piksi::Piksi(HardwareSerial &serial_port) : _serial_port(serial_port) {}
 
 bool Piksi::setup() {
+    _serial_port.begin(BAUD_RATE);
+
     clear_log();
     _heartbeat.flags = 1; // By default, let there be an error in the system.
 

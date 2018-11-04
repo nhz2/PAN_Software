@@ -51,7 +51,7 @@ void SpikeAndHold::execute_schedule() {
     for (uint8_t i = 0; i < 4 && sch_running; i++) {
         if (cursch[i] != 0) {
             digitalWrite(valve_pins[i + 2], OPEN);
-            delay(2);
+            delay(3);
         }
     }
     

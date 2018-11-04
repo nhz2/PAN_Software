@@ -7,7 +7,6 @@ Piksi piksi(Serial4);
 bool was_setup_successful;
 
 void setup() {
-    Serial4.begin(Piksi::BAUD_RATE);
     Serial.begin(9600);
     was_setup_successful = piksi.setup();
 }

@@ -75,7 +75,7 @@ inline void I2CDevice::i2c_request_from_subaddr(uint8_t subaddr, std::size_t len
 
 inline void I2CDevice::i2c_read_from_subaddr(uint8_t subaddr, uint8_t* dest, std::size_t len) {
   i2c_request_from_subaddr(subaddr, len);
-  for(uint32_t i = 0; i < len; i++) { dest[i] = i2c_read(); }
+  i2c_read(dest, len);
   i2c_finish();
 }
 
@@ -88,7 +88,7 @@ inline uint8_t I2CDevice::i2c_read_from_subaddr(uint8_t subaddr) {
 inline void I2CDevice::i2c_write_to_subaddr(uint8_t subaddr, const uint8_t data[], std::size_t len) {
   i2c_begin_transmission();
   i2c_write(subaddr);
-  for(uint32_t i = 0; i < len; i++) { i2c_write(data[i]); }
+  i2c_write(data, len);
   i2c_end_transmission();
 }
 

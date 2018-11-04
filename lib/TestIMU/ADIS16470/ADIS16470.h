@@ -30,7 +30,8 @@
 //  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+#ifndef ADIS16470_HPP_
+#define ADIS16470_HPP_
 #include "Arduino.h"
 #include <SPI.h>
 
@@ -103,7 +104,7 @@ class ADIS16470 : public Device {
     // Constructor with configurable CS, data ready, and HW reset pins
 
     // ADIS16470(int CS, int DR, int RST, int MOSI, int MISO, int CLK);
-    ADIS16470(uint8_t CS, uint8_t DR, uint8_t RST);
+    ADIS16470(uint8_t CS, uint8_t DR, uint8_t RST, SPIClass& spi);
 
     bool setup() override;
     void reset() override;
@@ -156,5 +157,8 @@ class ADIS16470 : public Device {
     int _DR;
     int _RST;
     int _stall = 20;
+    SPIClass& _spi;
 };
 }
+
+#endif

@@ -38,44 +38,31 @@ bool Piksi::setup() {
     sbp_state_set_io_context(&_sbp_state, this);
 
     // Register all necessary callbacks for data reads--specification provided in sbp.c
-    sbp_msg_callback_t _log_callback_ptr = &Piksi::_log_callback;
-    sbp_msg_callback_t _gps_time_callback_ptr = &Piksi::_gps_time_callback;
-    sbp_msg_callback_t _dops_callback_ptr = &Piksi::_dops_callback;
-    sbp_msg_callback_t _pos_ecef_callback_ptr = &Piksi::_pos_ecef_callback;
-    sbp_msg_callback_t _baseline_ecef_callback_ptr = &Piksi::_baseline_ecef_callback;
-    sbp_msg_callback_t _vel_ecef_callback_ptr = &Piksi::_vel_ecef_callback;
-    sbp_msg_callback_t _base_pos_ecef_callback_ptr = &Piksi::_base_pos_ecef_callback;
-    sbp_msg_callback_t _settings_read_resp_callback_ptr = &Piksi::_settings_read_resp_callback;
-    sbp_msg_callback_t _startup_callback_ptr = &Piksi::_startup_callback;
-    sbp_msg_callback_t _heartbeat_callback_ptr = &Piksi::_heartbeat_callback;
-    sbp_msg_callback_t _uart_state_callback_ptr = &Piksi::_uart_state_callback;
-    sbp_msg_callback_t _user_data_callback_ptr = &Piksi::_user_data_callback;
-
     uint8_t registration_successful = 0;
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_LOG, 
-        _log_callback_ptr, nullptr, &Piksi::_log_callback_node);
+        &Piksi::_log_callback, this, &Piksi::_log_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_GPS_TIME, 
-        _gps_time_callback_ptr, nullptr, &Piksi::_gps_time_callback_node);
+        &Piksi::_gps_time_callback, this, &Piksi::_gps_time_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_DOPS, 
-        _dops_callback_ptr, nullptr, &Piksi::_dops_callback_node);
+        &Piksi::_dops_callback, this, &Piksi::_dops_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_POS_ECEF, 
-        _pos_ecef_callback_ptr, nullptr, &Piksi::_pos_ecef_callback_node);
+        &Piksi::_pos_ecef_callback, this, &Piksi::_pos_ecef_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_BASELINE_ECEF, 
-        _baseline_ecef_callback_ptr, nullptr, &Piksi::_baseline_ecef_callback_node);
+        &Piksi::_baseline_ecef_callback, this, &Piksi::_baseline_ecef_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_VEL_ECEF, 
-        _vel_ecef_callback_ptr, nullptr, &Piksi::_vel_ecef_callback_node);
+        &Piksi::_vel_ecef_callback, this, &Piksi::_vel_ecef_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_BASE_POS_ECEF, 
-        _base_pos_ecef_callback_ptr, nullptr, &Piksi::_base_pos_ecef_callback_node);
+        &Piksi::_base_pos_ecef_callback, this, &Piksi::_base_pos_ecef_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_SETTINGS_READ_RESP, 
-        _settings_read_resp_callback_ptr, nullptr, &Piksi::_settings_read_resp_callback_node);
+        &Piksi::_settings_read_resp_callback, this, &Piksi::_settings_read_resp_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_HEARTBEAT, 
-        _heartbeat_callback_ptr, nullptr, &Piksi::_heartbeat_callback_node);
+        &Piksi::_heartbeat_callback, this, &Piksi::_heartbeat_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_STARTUP, 
-        _startup_callback_ptr, nullptr, &Piksi::_startup_callback_node);
+        &Piksi::_startup_callback, this, &Piksi::_startup_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_UART_STATE, 
-        _uart_state_callback_ptr, nullptr, &Piksi::_uart_state_callback_node);
+        &Piksi::_uart_state_callback, this, &Piksi::_uart_state_callback_node);
     registration_successful |= sbp_register_callback(&_sbp_state, SBP_MSG_USER_DATA, 
-        _user_data_callback_ptr, nullptr, &Piksi::_user_data_callback_node);
+        &Piksi::_user_data_callback, this, &Piksi::_user_data_callback_node);
 
     return (registration_successful == 0);
 }
@@ -122,7 +109,11 @@ void Piksi::write_default_settings() {
     settings_save();
 }
 
-bool Piksi::is_functional() { return get_heartbeat() == 0; }
+bool Piksi::is_functional() {
+    return is_system_healthy() && is_system_io_healthy()
+        && is_swiftnap_healthy() && is_antenna_healthy();
+}
+
 void Piksi::reset() { piksi_reset(); }
 
 void Piksi::disable() {
@@ -185,6 +176,10 @@ void Piksi::get_base_pos_ecef(double* position[3]) {
 char* Piksi::get_settings_read_resp()  { return _settings_read_resp.setting; }
 
 uint32_t Piksi::get_heartbeat()  { return _heartbeat.flags; }
+bool Piksi::is_system_healthy()  { return !(_heartbeat.flags & 0x0001); }
+bool Piksi::is_system_io_healthy()  { return !(_heartbeat.flags & 0x0002); }
+bool Piksi::is_swiftnap_healthy()  { return !(_heartbeat.flags & 0x0003); }
+bool Piksi::is_antenna_healthy()  { return !(_heartbeat.flags & 0x0004); }
 
 float Piksi::get_uart_a_tx_throughput() { return _uart_state.uart_a.tx_throughput; }
 float Piksi::get_uart_a_rx_throughput()  { return _uart_state.uart_a.rx_throughput; }
@@ -221,9 +216,13 @@ void Piksi::send_user_data(const msg_user_data_t &data)  {
         sizeof(msg_user_data_t), (uint8_t*) &data, &Piksi::_uart_write);
 }
 
+bool Piksi::process_buffer() {
+    return sbp_process(&_sbp_state, Piksi::_uart_read) > 0;
+}
+
 u32 Piksi::_uart_read(u8 *buff, u32 n, void *context) {
     Piksi* piksi = (Piksi*) context;
-    HardwareSerial sp = piksi->_serial_port;
+    HardwareSerial& sp = piksi->_serial_port;
     
     u32 i;
     for (i = 0; i < n; i++) {
@@ -237,7 +236,7 @@ u32 Piksi::_uart_read(u8 *buff, u32 n, void *context) {
 
 u32 Piksi::_uart_write(u8 *buff, u32 n, void *context) {
     Piksi* piksi = (Piksi*) context;
-    HardwareSerial sp = piksi->_serial_port;
+    HardwareSerial& sp = piksi->_serial_port;
     u32 i;
     for(i = 0; i < n; i++) {
         if (sp.write(buff[i]) == 0) break;

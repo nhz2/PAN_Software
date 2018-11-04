@@ -14,7 +14,8 @@
 namespace Devices {
 class Piksi : public Device {
   public:
-    Piksi(HardwareSerial &serial_port);
+
+    static constexpr uint32_t BAUD_RATE = 115200;
 
     // Output struct definitions
     struct position_t {
@@ -28,12 +29,18 @@ class Piksi : public Device {
       double accuracy;
     };
 
+    Piksi(HardwareSerial &serial_port);
+
     // Standard device functions
     bool setup() override;
     bool is_functional() override;
     void reset() override;
     void disable() override; // Sets Piksi's power consumption to a minimum
     void single_comp_test() override;
+
+    /** \brief Runs read over UART buffer to process values sent by Piksi into memory.
+     *  \returns Whether or not any data was processed. **/
+    bool process_buffer();
 
     /** \brief Gets GPS time. 
      *  \return GPS time, as nanoseconds since the epoch. **/
@@ -99,6 +106,10 @@ class Piksi : public Device {
     /** \brief Reads status flags of Piksi (i.e. the "heartbeat").
      *  \return Status flags of Piksi, as a libsbp struct. **/
     uint32_t get_heartbeat();
+    bool is_system_healthy();
+    bool is_system_io_healthy();
+    bool is_swiftnap_healthy();
+    bool is_antenna_healthy();
 
     /** \brief Reads UART channel A transmission throughput.
      *  \return UART A channel transmission throughput. **/
@@ -168,6 +179,7 @@ class Piksi : public Device {
   private:
     // Internal values required by libsbp. See sbp.c
     sbp_state_t _sbp_state;
+
     static sbp_msg_callbacks_node_t _log_callback_node;
     static sbp_msg_callbacks_node_t _gps_time_callback_node;
     static sbp_msg_callbacks_node_t _dops_callback_node;
@@ -196,7 +208,7 @@ class Piksi : public Device {
     static void _user_data_callback(u16 sender_id, u8 len, u8 msg[], void *context);
 
     // Required writing and reading functions by libsbp. See sbp.c
-    HardwareSerial _serial_port;
+    HardwareSerial& _serial_port;
     static u32 _uart_write(u8 *buff, u32 n, void *context);
     static u32 _uart_read(u8 *buff, u32 n, void *context);
 

@@ -16,7 +16,7 @@ bool MMC5883MA::setup() {
 
 bool MMC5883MA::i2c_ping() {
     uint8_t id = i2c_read_from_subaddr(REGISTERS::PRODUCT_ID);
-    return id == 0x0c;
+    return (id == 0x0c);
 }
 
 void MMC5883MA::reset() { I2CDevice::reset(); } // TODO
@@ -26,22 +26,16 @@ void MMC5883MA::single_comp_test() { } // TODO
 void MMC5883MA::get_mag(magnetic_field_t* mag_field){
     uint8_t out[6];
     i2c_read_from_subaddr(REGISTERS::OUT,out,6);
+    Serial.printf("Raw values: %d, %d, %d\n", (out[1] << 8) + out[0], (out[3] << 8) + out[2], (out[5] << 8) + out[4]);
     mag_field->x = this->out_to_mag(out[0],out[1]);
     mag_field->y = this->out_to_mag(out[2],out[3]);
     mag_field->z = this->out_to_mag(out[4],out[5]);
-    this->xyz_to_dif(mag_field);
 }
 
 float MMC5883MA::get_temp() {
     return i2c_read_from_subaddr(REGISTERS::TEMPERATURE) - 75.0f;
 }
 
-inline float MMC5883MA::out_to_mag(uint8_t LSB, uint8_t MSB) {
-    return (float)(MSB << 8 | LSB) * DYNAMIC_RANGE / RESOLUTION 
-        - (float)DYNAMIC_RANGE / 2;}
-
-void MMC5883MA::xyz_to_dif(magnetic_field_t* mag_field){
-	mag_field->d = atan2(mag_field->y,mag_field->x);
-	mag_field->i = atan(sqrt(pow(mag_field->x,2) + pow(mag_field->y,2)) / mag_field->z);
-	mag_field->f = sqrt(pow(mag_field->x,2) + pow(mag_field->y,2) + pow(mag_field->z,2));
+float MMC5883MA::out_to_mag(uint8_t LSB, uint8_t MSB) {
+    return ((float)(MSB << 8 | LSB) * 16.0f / 65535) - 8.0f;
 }

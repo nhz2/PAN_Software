@@ -8,7 +8,6 @@ class MMC5883MA : public I2CDevice {
   public:
     struct magnetic_field_t {
         float x,y,z;
-        float d,i,f;
     };
 
     enum REGISTERS {
@@ -33,9 +32,7 @@ class MMC5883MA : public I2CDevice {
         PRODUCT_ID = 0x2F,
     };
 
-    static constexpr uint8_t ADDR = 0x60;
-    static constexpr uint8_t DYNAMIC_RANGE = 16;
-    static constexpr uint32_t RESOLUTION = 65536;
+    static constexpr uint8_t ADDR = 0x30;
 
     MMC5883MA(i2c_t3 &i2c_wire, uint8_t i2c_addr);
 
@@ -48,9 +45,7 @@ class MMC5883MA : public I2CDevice {
     void get_mag(magnetic_field_t* mag_field);
     float get_temp();
   private:
-    inline float out_to_mag(uint8_t LSB, uint8_t MSB);
-    void xyz_to_dif(magnetic_field_t* mag_field);
-    char data_write[2];
+    float out_to_mag(uint8_t LSB, uint8_t MSB);
 };
 }
 

@@ -14,4 +14,5 @@ void setup() {
 
 void loop() {
     Serial.println(imu.i2c_ping());
+    delay(1000);
 }

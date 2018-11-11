@@ -21,12 +21,12 @@ void setup() {
 #define PACKET_SIZE 20
 void loop() {
     uint8_t packet[PACKET_SIZE];
-    float data[3];
-
     MMC5883MA::magnetic_field_t magfield;
+
     imu.get_mag(&magfield);
     float temp = imu.get_temp();
     uint32_t sample_time = micros();
+    
     packet[0] = sample_time & 0xFF000000;
     packet[1] = sample_time & 0x00FF0000;
     packet[2] = sample_time & 0x0000FF00;

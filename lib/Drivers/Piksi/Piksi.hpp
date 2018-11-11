@@ -21,12 +21,12 @@ class Piksi : public Device {
     struct position_t {
       u32 tow; // Time of week
       double position[3];
-      double accuracy;
+      double accuracy; // Will always be zero. Not implemented in this Piksi version.
     };
     struct velocity_t {
       u32 tow; // Time of week
       double velocity[3];
-      double accuracy;
+      double accuracy; // Will always be zero. Not implemented in this Piksi version.
     };
 
     Piksi(HardwareSerial &serial_port);

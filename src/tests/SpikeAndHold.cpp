@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <SpikeAndHold.hpp>
+#include <SpikeAndHold/SpikeAndHold.hpp>
 using namespace Devices;
 
 SpikeAndHold sph;

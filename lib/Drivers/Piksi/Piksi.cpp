@@ -85,8 +85,8 @@ void Piksi::write_default_settings() {
     const char *enable_hardware_watchdog = "system monitor\000watchdog\000true";
     // Heartbeat output rate.
     const char *heartbeat_period = "system monitor\000heartbeat period milliseconds\00010000";
-    // Telemetry radio settings TODO
-    const char *telemetry_settings = "telemetry radio\000configuration string\000AT commands for setting up radio go here";
+    // Telemetry radio settings
+    const char *telemetry_settings = "telemetry radio\000configuration string\000AT&F,ATS1=57,ATS2=64,ATS5=0,AT&W,ATZ";
     
     // UART A (radio) settings.
     const char *uart_a_output_mask = "uart uarta\000sbp message mask\0000x0840"; // MSG_OBS | MSG_USER_DATA

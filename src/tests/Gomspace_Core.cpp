@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <i2c_t3_pan/i2c_t3_pan.h>
-#include <Gomspace.hpp>
+#include <Gomspace/Gomspace.hpp>
 using namespace Devices;
 
 #define HK_READ_TESTING

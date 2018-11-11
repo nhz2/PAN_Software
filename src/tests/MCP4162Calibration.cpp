@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <SPI.h>
-#include <MCP4162.hpp>
+#include <MCP4162/MCP4162.hpp>
 
 uint8_t adc_pin = 33;
 float vcc = 3.3f;

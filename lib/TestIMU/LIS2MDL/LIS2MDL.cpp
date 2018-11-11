@@ -13,62 +13,70 @@
 
 using namespace Devices;
 
-LIS2MDL::LIS2MDL(i2c_t3 &i2c_wire, uint8_t int_pin, uint8_t i2c_addr) : I2CDevice(i2c_wire, i2c_addr, 0) {
-    pinMode(int_pin, INPUT);
-    _int_pin = int_pin;
-}
+LIS2MDL::LIS2MDL(i2c_t3 &i2c_wire, uint8_t int_pin, uint8_t i2c_addr) : I2CDevice(i2c_wire, i2c_addr, 0), _int_pin(int_pin), _m_res(0.0015f) {}
 
 uint8_t LIS2MDL::get_chip_id() {
-    return i2c_read_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_WHO_AM_I);
+    return i2c_read_from_subaddr(REGISTERS::WHO_AM_I);
 }
 
 void LIS2MDL::reset() {
+    I2CDevice::reset();
     // reset device
-    uint8_t temp = i2c_read_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A);
+    uint8_t temp = i2c_read_from_subaddr(REGISTERS::CFG_REG_A);
 
-    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A, (temp | 0x20));
+    i2c_write_to_subaddr(REGISTERS::CFG_REG_A, (temp | 0x20));
     delay(1);
 
-    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A, (temp | 0x40));
-    i2c_write(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A);
+    i2c_write_to_subaddr(REGISTERS::CFG_REG_A, (temp | 0x40));
+    i2c_write(REGISTERS::CFG_REG_A);
     delay(100); // Wait for all registers to reset 
     i2c_end_transmission();
 }
 
 bool LIS2MDL::setup() {
+    bool setup_succeeded = I2CDevice::setup();
+    if (!setup_succeeded) return false;
+    
+    pinMode(_int_pin, INPUT);
     uint8_t MODR = 0;
-    return setup(MODR);
-}
-
-bool LIS2MDL::setup(uint8_t MODR) {
     // enable temperature compensation (bit 7 == 1), continuous mode (bits 0:1 == 00)
-    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_A, (0x80 | MODR<<2));
+    i2c_write_to_subaddr(REGISTERS::CFG_REG_A, (0x80 | MODR<<2));
     // enable low pass filter (bit 0 == 1), set to ODR/4
-    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_B, 0x01);
+    i2c_write_to_subaddr(REGISTERS::CFG_REG_B, 0x01);
     // enable data ready on interrupt pin (bit 0 == 1), enable block data read (bit 4 == 1)
-    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C, (0x01 | 0x10));
+    i2c_write_to_subaddr(REGISTERS::CFG_REG_C, (0x01 | 0x10));
 
     return true;
 }
 
 bool LIS2MDL::i2c_ping() {
     // Read the status register of the altimeter  
-    return i2c_read_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_STATUS_REG);
+    return i2c_read_from_subaddr(REGISTERS::WHO_AM_I) == 0x40;
 }
 
-void LIS2MDL::read_data(int16_t * destination) {
+void LIS2MDL::read_data(float* destination) {
     uint8_t raw_data[6];  // x/y/z mag register data stored here
-    i2c_read_from_subaddr((0x80 | REGISTER_ADDRESSES::LIS2MDL_OUTX_L_REG), raw_data, 6);
+    i2c_read_from_subaddr((0x80 | REGISTERS::OUTX_L_REG), raw_data, 6);
 
     // Turn the MSB and LSB into a signed 16-bit value
-    destination[0] = ((int16_t)raw_data[1] << 8) | raw_data[0] ;
-    destination[1] = ((int16_t)raw_data[3] << 8) | raw_data[2] ;  
-    destination[2] = ((int16_t)raw_data[5] << 8) | raw_data[4] ; 
+    destination[0] = (((int16_t)raw_data[1] << 8) | raw_data[0]) * _m_res;
+    destination[1] = (((int16_t)raw_data[3] << 8) | raw_data[2]) * _m_res;  
+    destination[2] = (((int16_t)raw_data[5] << 8) | raw_data[4]) * _m_res ; 
+}
+
+void LIS2MDL::read_data(int16_t* destination) {
+    uint8_t raw_data[6];  // x/y/z mag register data stored here
+    i2c_read_from_subaddr((0x80 | REGISTERS::OUTX_L_REG), raw_data, 6);
+
+    // Turn the MSB and LSB into a signed 16-bit value
+    destination[0] = ((int16_t)raw_data[1] << 8) | raw_data[0];
+    destination[1] = ((int16_t)raw_data[3] << 8) | raw_data[2];  
+    destination[2] = ((int16_t)raw_data[5] << 8) | raw_data[4]; 
 }
 
 int16_t LIS2MDL::read_temperature() {
   uint8_t raw_data[2];  // x/y/z mag register data stored here
-  i2c_read_from_subaddr((0x80 | REGISTER_ADDRESSES::LIS2MDL_TEMP_OUT_L_REG), raw_data, 2);
+  i2c_read_from_subaddr((0x80 | REGISTERS::TEMP_OUT_L_REG), raw_data, 2);
 
   int16_t temp = ((int16_t)raw_data[1] << 8) | raw_data[0] ;       // Turn the MSB and LSB into a signed 16-bit value
   return temp;
@@ -77,7 +85,7 @@ int16_t LIS2MDL::read_temperature() {
 
 void LIS2MDL::offset_bias(float * dest1, float * dest2) {
     int32_t mag_bias[3] = {0, 0, 0}, mag_scale[3] = {0, 0, 0};
-    int16_t mag_max[3] = {-32767, -32767, -32767}, mag_min[3] = {32767, 32767, 32767}, mag_temp[3] = {0, 0, 0};
+    float mag_max[3] = {-32767, -32767, -32767}, mag_min[3] = {32767, 32767, 32767}, mag_temp[3] = {0, 0, 0};
     float _mRes = 0.0015f;
 
     delay(4000);
@@ -119,7 +127,6 @@ void LIS2MDL::single_comp_test() {
     float magTest[3] = {0., 0., 0.};
     float magNom[3] = {0., 0., 0.};
     int32_t sum[3] = {0, 0, 0};
-    float _mRes = 0.0015f;
     
     // first, get average response with self test disabled
     for (int ii = 0; ii < 50; ii++)
@@ -135,9 +142,9 @@ void LIS2MDL::single_comp_test() {
     magNom[1] = (float) sum[1] / 50.0f;
     magNom[2] = (float) sum[2] / 50.0f;
     
-    uint8_t c = i2c_read_from_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C);
+    uint8_t c = i2c_read_from_subaddr(REGISTERS::CFG_REG_C);
 
-    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C, (c | 0x02));
+    i2c_write_to_subaddr(REGISTERS::CFG_REG_C, (c | 0x02));
     delay(100); // let mag respond
     
     sum[0] = 0;
@@ -155,13 +162,13 @@ void LIS2MDL::single_comp_test() {
     magTest[1] = (float) sum[1] / 50.0f;
     magTest[2] = (float) sum[2] / 50.0f;
     
-    i2c_write_to_subaddr(REGISTER_ADDRESSES::LIS2MDL_CFG_REG_C, c);
+    i2c_write_to_subaddr(REGISTERS::CFG_REG_C, c);
     delay(100); // let mag respond
 
     Serial.println("Mag Self Test:");
-    Serial.print("Mx results:"); Serial.print(  (magTest[0] - magNom[0]) * _mRes * 1000.0); Serial.println(" mG");
-    Serial.print("My results:"); Serial.println((magTest[1] - magNom[1]) * _mRes * 1000.0); Serial.println(" mG");
-    Serial.print("Mz results:"); Serial.println((magTest[2] - magNom[2]) * _mRes * 1000.0); Serial.println(" mG");
+    Serial.print("Mx results:"); Serial.print(  (magTest[0] - magNom[0]) * _m_res * 1000.0); Serial.println(" mG");
+    Serial.print("My results:"); Serial.println((magTest[1] - magNom[1]) * _m_res * 1000.0); Serial.println(" mG");
+    Serial.print("Mz results:"); Serial.println((magTest[2] - magNom[2]) * _m_res * 1000.0); Serial.println(" mG");
     Serial.println("Should be between 15 and 500 mG");
     delay(2000);  // give some time to read the screen
 }

@@ -43,7 +43,7 @@
 namespace Devices {
 class ADIS16470 : public Device {
   public:
-    enum REGISTER_ADDRESSES {
+    enum REGISTERS {
         FLASH_CNT   	= 0x00,  //Flash memory write count
         DIAG_STAT   	= 0x02,  //Diagnostic and operational status
         X_GYRO_LOW  	= 0x04,  //X-axis gyroscope output, lower word

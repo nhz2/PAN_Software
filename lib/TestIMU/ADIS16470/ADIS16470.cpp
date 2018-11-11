@@ -58,7 +58,7 @@ bool ADIS16470::setup() {
 void ADIS16470::reset() { reset_DUT(5); }
 void ADIS16470::disable() { /** TODO **/ }
 bool ADIS16470::is_functional() {
-    return (reg_read(REGISTER_ADDRESSES::DIAG_STAT) == 0);
+    return (reg_read(REGISTERS::DIAG_STAT) == 0);
 }
 void ADIS16470::single_comp_test() { /** TODO **/ }
 

@@ -18,13 +18,12 @@ void setup() {
     imu.setup();
 }
 
-#define PACKET_SIZE 20
+#define PACKET_SIZE 16
 void loop() {
     uint8_t packet[PACKET_SIZE];
     MMC5883MA::magnetic_field_t magfield;
 
     imu.get_mag(&magfield);
-    float temp = imu.get_temp();
     uint32_t sample_time = micros();
     
     packet[0] = sample_time & 0xFF000000;
@@ -43,10 +42,8 @@ void loop() {
     packet[13] = ((uint32_t) magfield.z) & 0x00FF0000;
     packet[14] = ((uint32_t) magfield.z) & 0x0000FF00;
     packet[15] = ((uint32_t) magfield.z) & 0x000000FF;
-    packet[16] = ((uint32_t) temp) & 0xFF000000;
-    packet[17] = ((uint32_t) temp) & 0x00FF0000;
-    packet[18] = ((uint32_t) temp) & 0x0000FF00;
-    packet[19] = ((uint32_t) temp) & 0x000000FF;
 
+    //Serial.printf("Temperature: %d\n", temp);
+    delay(1000);
     pSerial.send(packet, PACKET_SIZE);
 }

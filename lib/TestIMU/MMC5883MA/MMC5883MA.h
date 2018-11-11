@@ -43,7 +43,7 @@ class MMC5883MA : public I2CDevice {
     void single_comp_test() override;
 
     void get_mag(magnetic_field_t* mag_field);
-    float get_temp();
+    int16_t get_temp();
   private:
     float out_to_mag(uint8_t LSB, uint8_t MSB);
 };
